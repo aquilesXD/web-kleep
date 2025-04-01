@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ProfileGeneral from './pages/profile/ProfileGeneral';
 import ProfileConnectedAccounts from './pages/profile/ProfileConnectedAccounts';
 import ProfileSecurity from './pages/profile/ProfileSecurity';
