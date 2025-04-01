@@ -58,6 +58,7 @@ const ProfileBalance = () => {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [pendingTiktokAccounts, setPendingTiktokAccounts] = useState<PendingAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState<boolean>(false);
+  const [showTiktokVerificationSection, setShowTiktokVerificationSection] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -103,41 +104,98 @@ const ProfileBalance = () => {
     fetchDataFromApi(userEmail);
   }, [navigate]);
 
-  useEffect(() => {
+  // Función para cargar las cuentas de TikTok no verificadas
+  const fetchPendingTikTokAccounts = async () => {
     setLoadingAccounts(true);
-    setTimeout(() => {
-      const mockPendingAccounts: PendingAccount[] = [
-        {
-          id: '1',
-          username: '@merwebo',
-          dateSubmitted: '2024-03-15',
-          status: 'pending'
-        },
-        {
-          id: '2',
-          username: '@merwebo2',
-          dateSubmitted: '2024-03-18',
-          status: 'pending'
-        },
-        {
-          id: '3',
-          username: '@elbroscoli',
-          dateSubmitted: '2024-03-20',
-          status: 'pending'
-        },
-        {
-          id: '4',
-          username: '@elbroscoli',
-          dateSubmitted: '2024-03-22',
-          status: 'rejected'
-        }
-      ];
 
-      const pendingAccounts = mockPendingAccounts.filter(account => account.status === 'pending');
-      setPendingTiktokAccounts(pendingAccounts);
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) {
+        throw new Error('No hay email de usuario disponible');
+      }
+
+      // Cargar datos del usuario ya sea del localStorage o hacer una petición a la API
+      let userData: any = null;
+      const apiResponse = localStorage.getItem('apiResponse');
+
+      if (apiResponse) {
+        userData = JSON.parse(apiResponse);
+      } else {
+        // Si no hay datos en localStorage, puedes intentar cargarlos de la API
+        const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`;
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          throw new Error(`Error al obtener datos: ${response.status}`);
+        }
+
+        userData = await response.json();
+        localStorage.setItem('apiResponse', JSON.stringify(userData));
+      }
+
+      // Obtener el ID de usuario
+      let userId = '';
+      if (userData?.data && Array.isArray(userData.data) && userData.data.length > 0) {
+        const firstItem = userData.data[0];
+        userId = firstItem.user_id || firstItem.id_user || firstItem.id || '';
+      }
+
+      if (!userId) {
+        console.warn('No se pudo determinar el ID de usuario');
+        // No mostrar la sección de verificación si no podemos obtener el ID
+        setShowTiktokVerificationSection(false);
+        setLoadingAccounts(false);
+        return;
+      }
+
+      // Hacer la petición para obtener cuentas de TikTok
+      const tiktokAccountsUrl = `https://contabl.net/nova/get-tiktok-accounts-by-user?id_user=${encodeURIComponent(userId)}`;
+      const accountsResponse = await fetch(tiktokAccountsUrl);
+
+      if (!accountsResponse.ok) {
+        throw new Error(`Error al obtener cuentas: ${accountsResponse.status}`);
+      }
+
+      const accountsData = await accountsResponse.json();
+      console.log("Datos de cuentas TikTok:", accountsData);
+
+      // Procesar las cuentas de TikTok (suponiendo que vienen en accountsData.accounts)
+      if (accountsData?.accounts && Array.isArray(accountsData.accounts)) {
+        // Filtrar solo las cuentas pendientes (no verificadas)
+        const pendingAccounts = accountsData.accounts
+          .filter((account: any) => account.verified !== 1 && account.verified !== true)
+          .map((account: any) => ({
+            id: account.id || String(Math.random()),
+            username: account.account || `@${account.id_user || 'usuario'}`,
+            dateSubmitted: account.created_at || new Date().toISOString(),
+            status: account.verified_request ? 'pending' : 'rejected'
+          }));
+
+        setPendingTiktokAccounts(pendingAccounts);
+
+        // Mostrar la sección de verificación solo si hay cuentas pendientes
+        setShowTiktokVerificationSection(pendingAccounts.length > 0);
+      } else {
+        // Si no hay cuentas en la respuesta, no mostrar la sección
+        setShowTiktokVerificationSection(false);
+        setPendingTiktokAccounts([]);
+      }
+    } catch (error) {
+      console.error('Error al cargar cuentas de TikTok:', error);
+      // No mostrar cuentas de ejemplo en caso de error
+      setShowTiktokVerificationSection(false);
+      setPendingTiktokAccounts([]);
+    } finally {
       setLoadingAccounts(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  // Llamar a la función para cargar cuentas pendientes
+  useEffect(() => {
+    if (email) {
+      fetchPendingTikTokAccounts();
+    }
+  }, [email]);
 
   const fetchDataFromApi = async (userEmail: string) => {
     console.log(`Fetching API data for user: ${userEmail}`);
@@ -564,44 +622,43 @@ const ProfileBalance = () => {
         )}
       </div>
 
-      <div className="mt-8 bg-[#0c0c0c] border border-[#1c1c1c] rounded-md p-4 md:p-5">
-        <h2 className="text-white text-lg md:text-xl font-medium mb-3">Verifica tus cuentas de TikTok</h2>
+      {/* Sección de verificación de cuentas de TikTok */}
+      {showTiktokVerificationSection && (
+        <div className="bg-[#0c0c0c] border border-[#1c1c1c] rounded-lg mt-8 mb-6 p-5">
+          <h2 className="text-xl font-medium mb-2">Verifica tus cuentas de TikTok</h2>
 
-        <p className="text-gray-400 text-sm mb-4">
-          Para poder procesar los pagos, es importante que verifiquemos que tu eres el dueño de la cuenta de TikTok para optar para la monetización.
-        </p>
+          <p className="text-gray-400 mb-3">
+            Para poder procesar los pagos, es importante que verifiquemos que tu eres el dueño de la cuenta de TikTok para optar para la monetización.
+          </p>
 
-        <div className="flex items-center mb-4">
-          <AlertTriangle className="text-yellow-500 mr-2" size={18} />
-          <p className="text-yellow-500 text-sm">Este paso es obligatorio para recibir pagos.</p>
-        </div>
+          <div className="flex items-center mb-3">
+            <AlertTriangle className="text-yellow-500 mr-2" size={18} />
+            <p className="text-yellow-500 text-sm">Este paso es obligatorio para recibir pagos.</p>
+          </div>
 
-        <div className="mb-5">
-          <h3 className="text-white text-sm font-medium mb-3">Cuentas pendientes por verificar:</h3>
-          {loadingAccounts ? (
-            <div className="flex justify-center items-center py-3">
-              <div className="animate-spin h-5 w-5 border-t-2 border-b-2 border-[#7c3aed] rounded-full"></div>
-            </div>
-          ) : pendingTiktokAccounts.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {pendingTiktokAccounts.map((account) => (
-                <div key={account.id} className="bg-[#161616] text-white rounded-full px-3 py-1 text-sm">
-                  {account.username}
+          {pendingTiktokAccounts.length > 0 && (
+            <>
+              <div className="mb-3">
+                <p className="text-white mb-2">Cuentas pendientes por verificar:</p>
+                <div className="flex flex-wrap gap-2">
+                  {pendingTiktokAccounts.map(account => (
+                    <span key={account.id} className="inline-block bg-[#161616] text-white rounded-full px-3 py-1 text-sm">
+                      {account.username}
+                    </span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400 text-sm">No hay cuentas pendientes de verificación.</p>
+              </div>
+            </>
           )}
-        </div>
 
-        <button
-          className="bg-[#8e4dff] text-white font-medium py-2 px-4 rounded-md hover:bg-[#7c3aed] transition-colors"
-          onClick={handleNavigateToAccountsVerification}
-        >
-          Verificar Cuentas de TikTok
-        </button>
-      </div>
+          <button
+            className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-medium py-2 px-4 rounded-md mt-2"
+            onClick={handleNavigateToAccountsVerification}
+          >
+            Verificar Cuentas de TikTok
+          </button>
+        </div>
+      )}
 
       {showRejectionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
