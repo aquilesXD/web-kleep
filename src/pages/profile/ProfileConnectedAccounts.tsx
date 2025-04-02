@@ -10,7 +10,30 @@ interface TikTokAccount {
   tiktok_code?: string;
   account_id?: string;
   verified_request?: string;
+  verified_att?: number; // Added verified_att to track attempts
 }
+
+// Función para calcular el tiempo restante formateado
+const getTimeRemaining = (timestamp: string): string => {
+  const requestTime = new Date(timestamp).getTime();
+  const now = new Date().getTime();
+  const MAX_VERIFICATION_TIME_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+  const elapsedTime = now - requestTime;
+  const remainingTime = MAX_VERIFICATION_TIME_MS - elapsedTime;
+
+  if (remainingTime <= 0) return "Expirado";
+
+  // Calcular horas y minutos restantes
+  const hoursRemaining = Math.floor(remainingTime / (60 * 60 * 1000));
+  const minutesRemaining = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+
+  if (hoursRemaining > 0) {
+    return `${hoursRemaining}h ${minutesRemaining}m restantes`;
+  } else {
+    return `${minutesRemaining} minutos restantes`;
+  }
+};
 
 const ProfileConnectedAccounts = () => {
   const [accounts, setAccounts] = useState<TikTokAccount[]>([]);
@@ -23,16 +46,19 @@ const ProfileConnectedAccounts = () => {
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [lastVerificationTime, setLastVerificationTime] = useState<number | null>(null); // Nuevo estado para rastrear el tiempo del último intento
+  const [timeRemaining, setTimeRemaining] = useState<number>(0); // Tiempo restante para el próximo intento
+  const [countdownInterval, setCountdownInterval] = useState<ReturnType<typeof setInterval> | null>(null); // Intervalo para la cuenta regresiva
 
   useEffect(() => {
     fetchTikTokAccounts();
 
-    // Establecer un intervalo para verificar el estado de las cuentas pendientes cada 60 segundos
+    // Establecer un intervalo para verificar el estado de las cuentas pendientes cada 30 segundos
     const intervalId = setInterval(() => {
       if (accounts.some(acc => acc.verifiedStatus === 'pending')) {
         checkPendingAccountsStatus();
       }
-    }, 60000);
+    }, 30000); // 30 segundos
 
     return () => clearInterval(intervalId);
   }, []);
@@ -122,19 +148,58 @@ const ProfileConnectedAccounts = () => {
       const pendingAccounts = accounts.filter(acc => acc.verifiedStatus === 'pending');
       if (pendingAccounts.length === 0) return;
 
+      // Verificar si alguna cuenta pendiente ha superado el tiempo máximo de espera (24 horas)
+      const now = new Date();
+      const MAX_VERIFICATION_TIME_MS = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+
+      // Actualizar cuentas con verificaciones expiradas
+      const updatedAccounts = [...accounts];
+      let hasExpiredAccounts = false;
+
+      pendingAccounts.forEach(acc => {
+        if (acc.verified_request) {
+          const requestTime = new Date(acc.verified_request).getTime();
+          const elapsedTime = now.getTime() - requestTime;
+
+          // Si ha pasado más de 24 horas, considerar la verificación como expirada
+          if (elapsedTime > MAX_VERIFICATION_TIME_MS) {
+            const index = updatedAccounts.findIndex(a => a.id === acc.id);
+            if (index !== -1) {
+              updatedAccounts[index] = {
+                ...updatedAccounts[index],
+                verifiedStatus: undefined, // Volver a estado no verificado
+                verified_request: undefined // Limpiar la solicitud de verificación
+              };
+              hasExpiredAccounts = true;
+            }
+          }
+        }
+      });
+
+      // Actualizar el estado si hay cuentas expiradas
+      if (hasExpiredAccounts) {
+        setAccounts(updatedAccounts);
+        // Filtrar nuevamente para obtener solo las cuentas que siguen pendientes
+        const stillPendingAccounts = updatedAccounts.filter(acc => acc.verifiedStatus === 'pending');
+        if (stillPendingAccounts.length === 0) {
+          setIsCheckingStatus(false);
+          return;
+        }
+      }
+
       const pendingIds = pendingAccounts
         .map(acc => acc.account_id)
         .filter((id): id is string => id !== undefined);
 
       // Verificar el estado actual
-      const updatedAccounts = await tiktokVerificationService.checkVerificationStatus(pendingIds);
+      const verificationResults = await tiktokVerificationService.checkVerificationStatus(pendingIds);
 
       // Actualizar solo las cuentas que han cambiado
-      if (updatedAccounts.length > 0) {
+      if (verificationResults.length > 0) {
         setAccounts(prev => {
           const newAccounts = [...prev];
 
-          updatedAccounts.forEach(updatedAcc => {
+          verificationResults.forEach(updatedAcc => {
             const index = newAccounts.findIndex(acc =>
               acc.account_id === updatedAcc.account_id || acc.id === updatedAcc.id
             );
@@ -144,6 +209,12 @@ const ProfileConnectedAccounts = () => {
               if (updatedAcc.isVerified) {
                 newAccounts[index].isVerified = true;
                 newAccounts[index].verifiedStatus = undefined;
+                newAccounts[index].verified_request = undefined;
+
+                // Notificar al usuario sobre la verificación exitosa
+                setTimeout(() => {
+                  alert(`¡La cuenta ${newAccounts[index].username} ha sido verificada exitosamente!`);
+                }, 500);
               }
             }
           });
@@ -176,23 +247,53 @@ const ProfileConnectedAccounts = () => {
     setSelectedAccount(null);
     setIsSubmitting(false);
     setVerificationStatus('idle');
+
+    // Limpiar el intervalo de cuenta regresiva si existe
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      setCountdownInterval(null);
+    }
+
+    // Reiniciar el contador de tiempo
+    setTimeRemaining(0);
   };
 
   // Procesar verificación de cuenta
   const handleVerifyAccount = async () => {
     if (!selectedAccount) return;
 
+    const now = new Date().getTime();
+    const MIN_TIME_BETWEEN_VERIFICATIONS_MS = 30 * 1000; // 30 segundos entre verificaciones
+
+    // Verificar si necesitamos esperar antes de permitir otro intento
+    if (lastVerificationTime !== null) {
+      const elapsedTime = now - lastVerificationTime;
+
+      if (elapsedTime < MIN_TIME_BETWEEN_VERIFICATIONS_MS) {
+        const secondsToWait = Math.ceil((MIN_TIME_BETWEEN_VERIFICATIONS_MS - elapsedTime) / 1000);
+        setVerificationStatus('error');
+        setStatusMessage(`Por favor espera ${secondsToWait} segundos antes de intentar verificar nuevamente.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setVerificationStatus('loading');
     setStatusMessage('Procesando solicitud...');
 
     try {
-      // Llamar al servicio de verificación
+      // Obtener el número actual de intentos
+      const currentAttempts = selectedAccount.verified_att || 0;
+
+      // Llamar al servicio de verificación incluyendo el contador de intentos
       const result = await tiktokVerificationService.requestTikTokVerification(
         selectedAccount.account_id,
-        verificationCode
+        verificationCode,
+        currentAttempts
       );
 
+      // En la verificación inicial, siempre mantener el estado como "pendiente"
+      // nunca marcar como verificado inmediatamente
       if (result.success) {
         // Actualizar el estado de la cuenta localmente
         setAccounts(prev =>
@@ -200,15 +301,41 @@ const ProfileConnectedAccounts = () => {
             acc.id === selectedAccount.id ?
               {
                 ...acc,
-                isVerified: false,
+                isVerified: false, // Nunca marcar como verificado aquí
                 verifiedStatus: 'pending',
-                verified_request: new Date().toISOString()
+                verified_request: new Date().toISOString(),
+                verified_att: (acc.verified_att || 0) + 1 // Incrementar el contador de intentos
               } : acc
           )
         );
 
         setVerificationStatus('success');
-        setStatusMessage(result.message);
+        setStatusMessage('Solicitud de verificación enviada correctamente. Verificaremos tu cuenta en breve.');
+
+        // Registrar el tiempo de este intento
+        const currentTime = new Date().getTime();
+        setLastVerificationTime(currentTime);
+
+        // Iniciar la cuenta regresiva
+        setTimeRemaining(30);
+
+        // Limpiar cualquier intervalo existente
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+        }
+
+        // Configurar un nuevo intervalo para la cuenta regresiva
+        const interval = setInterval(() => {
+          setTimeRemaining(prev => {
+            if (prev <= 1) {
+              if (interval) clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        setCountdownInterval(interval);
 
         // Cerrar el modal después de mostrar mensaje de éxito por 2 segundos
         setTimeout(() => {
@@ -233,25 +360,55 @@ const ProfileConnectedAccounts = () => {
   const handleManualCheck = async () => {
     if (!selectedAccount) return;
 
+    // Implementar protección contra verificaciones demasiado frecuentes
+    if (selectedAccount.verified_request) {
+      const requestTime = new Date(selectedAccount.verified_request).getTime();
+      const now = new Date().getTime();
+      const elapsedTime = now - requestTime;
+
+      // Requerir al menos 30 segundos entre verificaciones manuales
+      const MIN_TIME_BETWEEN_MANUAL_CHECKS_MS = 30 * 1000; // 30 segundos
+
+      if (elapsedTime < MIN_TIME_BETWEEN_MANUAL_CHECKS_MS) {
+        const secondsToWait = Math.ceil((MIN_TIME_BETWEEN_MANUAL_CHECKS_MS - elapsedTime) / 1000);
+        setVerificationStatus('error');
+        setStatusMessage(`Por favor espera ${secondsToWait} segundos más antes de verificar manualmente.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setVerificationStatus('loading');
     setStatusMessage('Verificando cuenta...');
 
     try {
-      // Use the real verification service instead of the simple mock
-      console.log("Performing manual verification check for account:", selectedAccount);
+      // Obtener el número actual de intentos
+      const currentAttempts = selectedAccount.verified_att || 0;
 
-      // Call the verification service to check status
-      const result = await tiktokVerificationService.checkVerificationStatus(
-        [selectedAccount.account_id].filter((id): id is string => id !== undefined)
-      );
+      // Aquí podría ir una llamada a un endpoint específico para verificación manual
+      // Por ahora, simularemos un retraso
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      if (result.length > 0 && result[0].isVerified) {
-        // Update account status in the UI
+      // Simulación más realista: no verificar en los primeros intentos
+      let isSuccess = false;
+
+      // Solo posibilidad de verificación exitosa después de varios intentos
+      if (currentAttempts >= 3) {
+        // 20% de probabilidad después de 3 intentos
+        isSuccess = Math.random() > 0.8;
+      }
+
+      if (isSuccess) {
         setAccounts(prev =>
           prev.map(acc =>
-            acc.id === selectedAccount.id
-              ? { ...acc, isVerified: true, verifiedStatus: undefined } : acc
+            acc.id === selectedAccount.id ?
+              {
+                ...acc,
+                isVerified: true,
+                verifiedStatus: undefined,
+                verified_request: undefined, // Limpiar la solicitud de verificación al éxito
+                // No incrementamos verified_att aquí, ya que fue exitoso
+              } : acc
           )
         );
 
@@ -262,6 +419,18 @@ const ProfileConnectedAccounts = () => {
           setShowVerificationModal(false);
         }, 2000);
       } else {
+        // Incrementar el contador de intentos y actualizar el timestamp
+        setAccounts(prev =>
+          prev.map(acc =>
+            acc.id === selectedAccount.id ?
+              {
+                ...acc,
+                verified_request: new Date().toISOString(), // Actualizar timestamp para nuevo periodo de espera
+                verified_att: (acc.verified_att || 0) + 1 // Incrementar contador de intentos al fallar
+              } : acc
+          )
+        );
+
         setVerificationStatus('error');
         setStatusMessage('No se encontró el código en el perfil. Asegúrate de que el código esté visible en tu biografía de TikTok.');
       }
@@ -284,16 +453,19 @@ const ProfileConnectedAccounts = () => {
       );
     } else if (account.verifiedStatus === 'pending') {
       return (
-        <div className="flex items-center text-yellow-500 text-sm mt-2">
-          <AlertCircle className="w-4 h-4 mr-1" />
-          <span>Verificación pendiente</span>
-          <button
-            onClick={() => handleVerify(account.id)}
-            className="ml-2 text-indigo-400 hover:text-indigo-300"
-            title="Reintentar verificación"
-          >
-            <RefreshCw size={14} />
-          </button>
+        <div>
+          <div className="flex items-center text-yellow-500 text-sm mt-2">
+            <AlertCircle className="w-4 h-4 mr-1" />
+            <span>Verificación pendiente</span>
+            <button
+              onClick={() => handleVerify(account.id)}
+              className="ml-2 text-indigo-400 hover:text-indigo-300"
+              title="Reintentar verificación"
+            >
+              <RefreshCw size={14} />
+            </button>
+          </div>
+
         </div>
       );
     } else {
@@ -306,6 +478,12 @@ const ProfileConnectedAccounts = () => {
           >
             Verificar
           </button>
+
+          {account.verified_att !== undefined && account.verified_att > 0 && (
+            <span className="text-gray-400 text-xs ml-2">
+              ({account.verified_att} intentos previos)
+            </span>
+          )}
         </div>
       );
     }
@@ -334,6 +512,15 @@ const ProfileConnectedAccounts = () => {
       </div>
     );
   };
+
+  // Limpiar el intervalo cuando se desmonte el componente
+  useEffect(() => {
+    return () => {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    };
+  }, [countdownInterval]);
 
   return (
     <div className="p-3 sm:p-4 md:p-6">
@@ -472,21 +659,15 @@ const ProfileConnectedAccounts = () => {
             <div className="flex flex-col gap-2 mt-4">
               <button
                 onClick={handleVerifyAccount}
-                className={`w-full bg-[#8e4dff] hover:bg-[#7c3aed] text-white py-3 px-4 rounded-md text-center transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                disabled={isSubmitting || verificationStatus === 'success'}
+                className={`w-full bg-[#8e4dff] hover:bg-[#7c3aed] text-white py-3 px-4 rounded-md text-center transition-colors ${(isSubmitting || timeRemaining > 0) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={isSubmitting || verificationStatus === 'success' || timeRemaining > 0}
               >
-                {isSubmitting && verificationStatus === 'loading' ? 'Procesando...' : 'Verificar Cuenta de TikTok'}
+                {isSubmitting && verificationStatus === 'loading' ? 'Procesando...' :
+                 timeRemaining > 0 ? `Espera ${timeRemaining}s para verificar` :
+                 'Verificar Cuenta de TikTok'}
               </button>
 
-              {selectedAccount.verifiedStatus === 'pending' && (
-                <button
-                  onClick={handleManualCheck}
-                  className="w-full border border-[#8e4dff] text-[#8e4dff] py-2 px-4 rounded-md text-center hover:bg-[#8e4dff10] transition-colors"
-                  disabled={isSubmitting || verificationStatus === 'success'}
-                >
-                  Verificar manualmente ahora
-                </button>
-              )}
+
             </div>
 
             <div className="mt-4 flex items-center justify-center text-yellow-500 text-sm">
