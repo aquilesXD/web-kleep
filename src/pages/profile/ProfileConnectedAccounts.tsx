@@ -1,685 +1,497 @@
 import { useState, useEffect } from 'react';
-import { ExternalLink, Check, Clock, AlertTriangle, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, X, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import tiktokVerificationService from '../../services/tiktokVerificationService';
 
-interface Video {
-  id: string;
-  title: string;
-  thumbnail: string;
-  price: number;
-  date: string;
-  campaign?: string;
-  video_link?: string;
-  total_to_pay?: number;
-  verified?: boolean;
-  views?: number;
-  account?: string;
-  status?: number; // 0: En proceso, 1: Aprobado, 2: Rechazado
-}
-
-interface ApiUser {
-  id_user?: string;
-  email?: string;
-  whatsapp_phone?: string;
-  first_name?: string;
-  verified?: number;
-  approved?: number;
-  email_code?: string;
-  tiktok_code?: string;
-  age?: string;
-  campaign?: string;
-  video_link?: string;
-  views?: number;
-  total_to_pay?: string | number;
-  status?: number; // Asegurarse de que el campo status esté presente
-}
-
-interface PlatformOption {
-  name: string;
-  icon: string;
-}
-
-interface PendingAccount {
+interface TikTokAccount {
   id: string;
   username: string;
-  dateSubmitted: string;
-  status: 'pending' | 'verified' | 'rejected';
+  isVerified: boolean;
+  verifiedStatus?: string;
+  tiktok_code?: string;
+  account_id?: string;
+  verified_request?: string;
 }
 
-const ProfileBalance = () => {
-  const [email, setEmail] = useState<string | null>(null);
-  const [videos, setVideos] = useState<Video[]>([]);
+const ProfileConnectedAccounts = () => {
+  const [accounts, setAccounts] = useState<TikTokAccount[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [balance, setBalance] = useState<number>(0);
-  const [apiResponseData, setApiResponseData] = useState<any>(null);
-  const [showingExampleData, setShowingExampleData] = useState<boolean>(false);
-  const [showRejectionModal, setShowRejectionModal] = useState<boolean>(false);
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
-  const [pendingTiktokAccounts, setPendingTiktokAccounts] = useState<PendingAccount[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState<boolean>(false);
-  const [showTiktokVerificationSection, setShowTiktokVerificationSection] = useState<boolean>(false);
-
-  const navigate = useNavigate();
-
-  const platformOptions: PlatformOption[] = [
-    { name: 'TikTok', icon: '🎵' },
-    { name: 'Discord', icon: '🎮' },
-    { name: 'Solana', icon: '💰' },
-    { name: 'Telegram', icon: '✉️' },
-    { name: 'Instagram', icon: '📷' },
-    { name: 'Youtube', icon: '🎬' },
-    { name: 'X', icon: '🐦' },
-    { name: 'TradingView', icon: '📊' }
-  ];
-
-  const handleNavigateToAccountsVerification = () => {
-    navigate('/profile-cuentas');
-  };
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<TikTokAccount | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   useEffect(() => {
-    console.log("isLoading:", isLoading);
-  }, [isLoading]);
+    fetchTikTokAccounts();
 
-  useEffect(() => {
-    console.log("Loading profile data...");
-
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    if (!isAuthenticated) {
-      console.log("No authentication found, redirecting to signin");
-      navigate('/signin');
-      return;
-    }
-
-    const userEmail = localStorage.getItem('userEmail');
-    if (!userEmail) {
-      console.log("No email found, redirecting to signin");
-      navigate('/signin');
-      return;
-    }
-
-    console.log("User authenticated:", userEmail);
-    setEmail(userEmail);
-
-    fetchDataFromApi(userEmail);
-  }, [navigate]);
-
-  // Función para cargar las cuentas de TikTok no verificadas
-  const fetchPendingTikTokAccounts = async () => {
-    setLoadingAccounts(true);
-
-    try {
-      const userEmail = localStorage.getItem('userEmail');
-      if (!userEmail) {
-        throw new Error('No hay email de usuario disponible');
+    // Establecer un intervalo para verificar el estado de las cuentas pendientes cada 60 segundos
+    const intervalId = setInterval(() => {
+      if (accounts.some(acc => acc.verifiedStatus === 'pending')) {
+        checkPendingAccountsStatus();
       }
+    }, 60000);
 
-      // Cargar datos del usuario ya sea del localStorage o hacer una petición a la API
-      let userData: any = null;
-      const apiResponse = localStorage.getItem('apiResponse');
+    return () => clearInterval(intervalId);
+  }, []);
 
-      if (apiResponse) {
-        userData = JSON.parse(apiResponse);
-      } else {
-        // Si no hay datos en localStorage, puedes intentar cargarlos de la API
-        const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`;
-        const response = await fetch(apiUrl);
-
-        if (!response.ok) {
-          throw new Error(`Error al obtener datos: ${response.status}`);
-        }
-
-        userData = await response.json();
-        localStorage.setItem('apiResponse', JSON.stringify(userData));
-      }
-
-      // Obtener el ID de usuario
-      let userId = '';
-      if (userData?.data && Array.isArray(userData.data) && userData.data.length > 0) {
-        const firstItem = userData.data[0];
-        userId = firstItem.user_id || firstItem.id_user || firstItem.id || '';
-      }
-
-      if (!userId) {
-        console.warn('No se pudo determinar el ID de usuario');
-        // No mostrar la sección de verificación si no podemos obtener el ID
-        setShowTiktokVerificationSection(false);
-        setLoadingAccounts(false);
-        return;
-      }
-
-      // Hacer la petición para obtener cuentas de TikTok
-      const tiktokAccountsUrl = `https://contabl.net/nova/get-tiktok-accounts-by-user?id_user=${encodeURIComponent(userId)}`;
-      const accountsResponse = await fetch(tiktokAccountsUrl);
-
-      if (!accountsResponse.ok) {
-        throw new Error(`Error al obtener cuentas: ${accountsResponse.status}`);
-      }
-
-      const accountsData = await accountsResponse.json();
-      console.log("Datos de cuentas TikTok:", accountsData);
-
-      // Procesar las cuentas de TikTok (suponiendo que vienen en accountsData.accounts)
-      if (accountsData?.accounts && Array.isArray(accountsData.accounts)) {
-        // Filtrar solo las cuentas pendientes (no verificadas)
-        const pendingAccounts = accountsData.accounts
-          .filter((account: any) => account.verified !== 1 && account.verified !== true)
-          .map((account: any) => ({
-            id: account.id || String(Math.random()),
-            username: account.account || `@${account.id_user || 'usuario'}`,
-            dateSubmitted: account.created_at || new Date().toISOString(),
-            status: account.verified_request ? 'pending' : 'rejected'
-          }));
-
-        setPendingTiktokAccounts(pendingAccounts);
-
-        // Mostrar la sección de verificación solo si hay cuentas pendientes
-        setShowTiktokVerificationSection(pendingAccounts.length > 0);
-      } else {
-        // Si no hay cuentas en la respuesta, no mostrar la sección
-        setShowTiktokVerificationSection(false);
-        setPendingTiktokAccounts([]);
-      }
-    } catch (error) {
-      console.error('Error al cargar cuentas de TikTok:', error);
-      // No mostrar cuentas de ejemplo en caso de error
-      setShowTiktokVerificationSection(false);
-      setPendingTiktokAccounts([]);
-    } finally {
-      setLoadingAccounts(false);
-    }
-  };
-
-  // Llamar a la función para cargar cuentas pendientes
-  useEffect(() => {
-    if (email) {
-      fetchPendingTikTokAccounts();
-    }
-  }, [email]);
-
-  const fetchDataFromApi = async (userEmail: string) => {
-    console.log(`Fetching API data for user: ${userEmail}`);
+  // Función para obtener las cuentas de TikTok
+  const fetchTikTokAccounts = async () => {
     setIsLoading(true);
     setError(null);
-    setShowingExampleData(false);
 
     try {
-      const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`;
-      console.log(`Making API request to: ${apiUrl}`);
-
-      const response = await fetch(apiUrl);
-
-      if (!response.ok) {
-        throw new Error(`Error en la petición: ${response.status}`);
+      // Obtener el ID de usuario
+      const userId = await getUserId();
+      if (!userId) {
+        throw new Error('No se pudo determinar el ID de usuario');
       }
 
-      const data = await response.json();
-      console.log("API Response:", data);
+      // Obtener cuentas de TikTok usando el servicio
+      const accountsData = await tiktokVerificationService.fetchTikTokAccounts(userId);
+      setAccounts(accountsData);
 
-      setApiResponseData(data);
-
-      localStorage.setItem('apiResponse', JSON.stringify(data));
-
-      processApiData(data, userEmail);
+      // Si hay cuentas pendientes, verificar su estado actual
+      if (accountsData.some(acc => acc.verifiedStatus === 'pending')) {
+        setTimeout(() => checkPendingAccountsStatus(), 1000);
+      }
     } catch (error: any) {
-      console.error('Error al cargar datos:', error);
-      setError(`No se pudo conectar con el servidor: ${error.message}`);
-
-      const storedApiResponse = localStorage.getItem('apiResponse');
-      if (storedApiResponse) {
-        try {
-          console.log("Using previously stored API response due to fetch error");
-          const parsedData = JSON.parse(storedApiResponse);
-          processApiData(parsedData, userEmail);
-        } catch (parseError) {
-          console.error('Error parsing stored API data:', parseError);
-          showExampleDataForUser(userEmail);
-        }
-      } else {
-        showExampleDataForUser(userEmail);
-      }
+      console.error('Error al cargar cuentas:', error);
+      setError(`Error al cargar cuentas: ${error.message}`);
     } finally {
-      console.log("API fetch completed, setting loading state to false");
       setIsLoading(false);
     }
   };
 
-  // Función para procesar los datos de la API
-  const processApiData = (data: any, userEmail: string) => {
-    console.log(`Processing API data for user: ${userEmail}`);
-    console.log("Raw API response:", data);
+  // Función para obtener el ID de usuario desde localStorage o API
+  const getUserId = async (): Promise<string | null> => {
+    const apiResponse = localStorage.getItem('apiResponse');
+    if (!apiResponse) return null;
 
-    // Verificar si el array data existe y tiene elementos
-    const apiData = data?.data || [];
-    console.log(`API data array:`, apiData);
+    try {
+      const parsedResponse = JSON.parse(apiResponse);
 
-    if (Array.isArray(apiData) && apiData.length > 0) {
-      console.log(`Processing ${apiData.length} videos from API for user: ${userEmail}`);
-      setShowingExampleData(false);
+      // Intentar encontrar el ID en diferentes ubicaciones de la respuesta
+      if (parsedResponse.data && Array.isArray(parsedResponse.data) && parsedResponse.data.length > 0) {
+        const firstItem = parsedResponse.data[0];
+        if (firstItem.user_id) return firstItem.user_id;
+        if (firstItem.id_user) return firstItem.id_user;
+        if (firstItem.id) return firstItem.id;
+      }
 
-      // Usar directamente los datos de la API sin simulaciones
-      const processedVideos = apiData.map((item: ApiUser, index: number) => {
-        // Asegurar que total_to_pay sea un número
-        let totalToPay = 0;
-        if (item.total_to_pay !== undefined && item.total_to_pay !== null) {
-          totalToPay = typeof item.total_to_pay === 'string'
-            ? parseFloat(item.total_to_pay)
-            : Number(item.total_to_pay);
+      if (parsedResponse.user_id) return parsedResponse.user_id;
+      if (parsedResponse.id_user) return parsedResponse.id_user;
+      if (parsedResponse.id) return parsedResponse.id;
+
+      // Búsqueda recursiva
+      const findUserId = (obj: any): string | null => {
+        if (!obj || typeof obj !== 'object') return null;
+
+        for (const key in obj) {
+          if ((key === 'id' || key === 'user_id' || key === 'id_user') &&
+              (typeof obj[key] === 'string' || typeof obj[key] === 'number')) {
+            return String(obj[key]);
+          }
+
+          if (typeof obj[key] === 'object') {
+            const result = findUserId(obj[key]);
+            if (result) return result;
+          }
         }
 
-        // Asegurar que el valor no es NaN
-        if (isNaN(totalToPay)) totalToPay = 0;
-
-        // Usar el valor exacto de status de la API - Sin conversiones
-        const status = item.status !== undefined ? item.status : 0;
-
-        console.log(`Video ${index}:`, {
-          status,
-          rawStatus: item.status,
-          totalToPay,
-          account: item.email || userEmail,
-          views: item.views || 0
-        });
-
-        return {
-          id: `api-video-${index}-${Date.now()}`,
-          title: item.first_name ? `Video de ${item.first_name}` : `Vídeo ${index + 1}`,
-          thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
-          price: totalToPay,
-          date: new Date().toISOString().split('T')[0],
-          campaign: item.campaign || 'Campaña estándar',
-          video_link: item.video_link || '#',
-          total_to_pay: totalToPay,
-          verified: status === 1, // Para compatibilidad con el código existente
-          status: status, // Usar el valor exacto de la API
-          views: item.views || 0,
-          account: item.email || userEmail
-        };
-      });
-
-      setVideos(processedVideos);
-
-      // Calcular balance total sumando TODOS los videos
-      let totalBalance = 0;
-      processedVideos.forEach((video, index) => {
-        const amount = video.total_to_pay || 0;
-        console.log(`Adding to balance - Video ${index}: $${amount}`);
-        totalBalance += amount;
-      });
-
-      console.log(`Final calculated balance: $${totalBalance}`);
-      setBalance(totalBalance);
-    } else {
-      console.log(`No videos found in API data for user: ${userEmail}. Showing example data.`);
-      showExampleDataForUser(userEmail);
-    }
-
-    setIsLoading(false);
-  };
-
-  // Función para mostrar datos de ejemplo cuando no hay datos de la API
-  const showExampleDataForUser = (userEmail: string) => {
-    console.log(`Generating example data for user: ${userEmail}`);
-    setShowingExampleData(true);
-
-    const emailHash = hashString(userEmail); // Generar un hash basado en el correo
-    const random = (seed: number, max: number) => Math.floor((seed * 9301 + 49297) % 233280) / 233280 * max;
-
-    const numVideos = 3 + Math.floor(random(emailHash, 4));
-    const exampleVideos: Video[] = [];
-
-    const campaignOptions = ['Campaña Marketing Q1', 'Campaña Verano 2024', 'Lanzamiento Producto', 'Promoción Especial', 'Black Friday', 'Navidad 2024'];
-    const titleOptions = [
-      'Cómo hacer un video viral en TikTok',
-      'Los mejores tips para editar videos profesionales',
-      'Guía completa para monetizar en YouTube',
-      'Estrategias de marketing para redes sociales',
-      'Tutorial de edición de video con Adobe Premiere',
-      'Cómo crear contenido que enganche a tu audiencia',
-      'Secretos de iluminación para videos de calidad',
-      'Optimización SEO para videos en YouTube'
-    ];
-
-    let totalBalance = 0;
-
-    for (let i = 0; i < numVideos; i++) {
-      const seed = emailHash + i;
-      const price = Math.floor(random(seed, 200) + 50) + 0.99;
-      const views = Math.floor(random(seed, 50000) + 5000);
-
-      // Generar un status aleatorio (0, 1 o 2)
-      const statusRand = random(seed, 1);
-      let status;
-      if (statusRand < 0.33) status = 0; // 33% En proceso
-      else if (statusRand < 0.8) status = 1; // 47% Aprobado
-      else status = 2; // 20% Rechazado
-
-      const video: Video = {
-        id: `example-video-${i}-${Date.now()}`, // ID único garantizado
-        title: titleOptions[Math.floor(random(seed, titleOptions.length))],
-        thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
-        price: price,
-        date: `2024-${Math.floor(random(seed, 12)) + 1}-${Math.floor(random(seed, 28)) + 1}`,
-        campaign: campaignOptions[Math.floor(random(seed, campaignOptions.length))],
-        video_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        total_to_pay: price,
-        views: views,
-        verified: status === 1, // Para compatibilidad
-        status: status, // 0: En proceso, 1: Aprobado, 2: Rechazado
-        account: userEmail
+        return null;
       };
 
-      exampleVideos.push(video);
-
-      // Sumar TODOS los videos al balance, independientemente de su estado
-      totalBalance += price;
+      return findUserId(parsedResponse) || '1'; // Valor por defecto para pruebas
+    } catch (e) {
+      console.error('Error al parsear la respuesta:', e);
+      return null;
     }
-
-    console.log(`Generated ${exampleVideos.length} example videos`);
-    setVideos(exampleVideos);
-    setBalance(totalBalance);
   };
 
-  const hashString = (str: string): number => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convertir a entero de 32 bits
+  // Verifica el estado actual de las cuentas pendientes
+  const checkPendingAccountsStatus = async () => {
+    if (isCheckingStatus || accounts.length === 0) return;
+
+    setIsCheckingStatus(true);
+
+    try {
+      // Obtener los IDs de las cuentas pendientes
+      const pendingAccounts = accounts.filter(acc => acc.verifiedStatus === 'pending');
+      if (pendingAccounts.length === 0) return;
+
+      const pendingIds = pendingAccounts
+        .map(acc => acc.account_id)
+        .filter((id): id is string => id !== undefined);
+
+      // Verificar el estado actual
+      const updatedAccounts = await tiktokVerificationService.checkVerificationStatus(pendingIds);
+
+      // Actualizar solo las cuentas que han cambiado
+      if (updatedAccounts.length > 0) {
+        setAccounts(prev => {
+          const newAccounts = [...prev];
+
+          updatedAccounts.forEach(updatedAcc => {
+            const index = newAccounts.findIndex(acc =>
+              acc.account_id === updatedAcc.account_id || acc.id === updatedAcc.id
+            );
+
+            if (index !== -1) {
+              // Si la cuenta ya fue verificada, actualizar su estado
+              if (updatedAcc.isVerified) {
+                newAccounts[index].isVerified = true;
+                newAccounts[index].verifiedStatus = undefined;
+              }
+            }
+          });
+
+          return newAccounts;
+        });
+      }
+    } catch (error) {
+      console.error('Error al verificar estado de cuentas pendientes:', error);
+    } finally {
+      setIsCheckingStatus(false);
     }
-    return Math.abs(hash);
   };
 
-  const handleShowRejectionModal = (videoId: string) => {
-    setSelectedVideoId(videoId);
-    setShowRejectionModal(true);
+  // Iniciar proceso de verificación
+  const handleVerify = (id: string) => {
+    const account = accounts.find(acc => acc.id === id);
+    if (!account) return;
+
+    setSelectedAccount(account);
+    setVerificationCode(account.tiktok_code || tiktokVerificationService.generateVerificationCode());
+    setShowVerificationModal(true);
+    setVerificationStatus('idle');
+    setStatusMessage('');
   };
 
-  const handleCloseRejectionModal = () => {
-    setShowRejectionModal(false);
-    setSelectedVideoId(null);
+  // Cerrar modal de verificación
+  const handleCloseModal = () => {
+    setShowVerificationModal(false);
+    setSelectedAccount(null);
+    setIsSubmitting(false);
+    setVerificationStatus('idle');
   };
 
-  const handleVerificationToggle = (videoId: string) => {
-    const video = videos.find(v => v.id === videoId);
+  // Procesar verificación de cuenta
+  const handleVerifyAccount = async () => {
+    if (!selectedAccount) return;
 
-    if (!video) return;
+    setIsSubmitting(true);
+    setVerificationStatus('loading');
+    setStatusMessage('Procesando solicitud...');
 
-    if (video.status === 0) {
-      handleShowRejectionModal(videoId);
-    } else if (video.status === 2) {
-      handleShowRejectionModal(videoId);
+    try {
+      // Llamar al servicio de verificación
+      const result = await tiktokVerificationService.requestTikTokVerification(
+        selectedAccount.account_id,
+        verificationCode
+      );
+
+      if (result.success) {
+        // Actualizar el estado de la cuenta localmente
+        setAccounts(prev =>
+          prev.map(acc =>
+            acc.id === selectedAccount.id ?
+              {
+                ...acc,
+                isVerified: false,
+                verifiedStatus: 'pending',
+                verified_request: new Date().toISOString()
+              } : acc
+          )
+        );
+
+        setVerificationStatus('success');
+        setStatusMessage(result.message);
+
+        // Cerrar el modal después de mostrar mensaje de éxito por 2 segundos
+        setTimeout(() => {
+          setShowVerificationModal(false);
+          // Confirmar con alerta
+          alert('Solicitud de verificación enviada correctamente. Recuerda colocar este código en la bio de tu perfil de TikTok para completar la verificación.');
+        }, 2000);
+      } else {
+        setVerificationStatus('error');
+        setStatusMessage(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error al verificar la cuenta:', error);
+      setVerificationStatus('error');
+      setStatusMessage(error.message || 'Error al procesar la solicitud');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Función para intentar verificación manual
+  const handleManualCheck = async () => {
+    if (!selectedAccount) return;
+
+    setIsSubmitting(true);
+    setVerificationStatus('loading');
+    setStatusMessage('Verificando cuenta...');
+
+    try {
+      // Use the real verification service instead of the simple mock
+      console.log("Performing manual verification check for account:", selectedAccount);
+
+      // Call the verification service to check status
+      const result = await tiktokVerificationService.checkVerificationStatus(
+        [selectedAccount.account_id].filter((id): id is string => id !== undefined)
+      );
+
+      if (result.length > 0 && result[0].isVerified) {
+        // Update account status in the UI
+        setAccounts(prev =>
+          prev.map(acc =>
+            acc.id === selectedAccount.id
+              ? { ...acc, isVerified: true, verifiedStatus: undefined } : acc
+          )
+        );
+
+        setVerificationStatus('success');
+        setStatusMessage('¡Cuenta verificada exitosamente!');
+
+        setTimeout(() => {
+          setShowVerificationModal(false);
+        }, 2000);
+      } else {
+        setVerificationStatus('error');
+        setStatusMessage('No se encontró el código en el perfil. Asegúrate de que el código esté visible en tu biografía de TikTok.');
+      }
+    } catch (error: any) {
+      setVerificationStatus('error');
+      setStatusMessage(error.message || 'Error al verificar');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Función para renderizar el indicador de estado de la cuenta
+  const renderVerificationStatus = (account: TikTokAccount) => {
+    if (account.isVerified) {
+      return (
+        <div className="flex items-center text-green-500 text-sm mt-2">
+          <CheckCircle className="w-4 h-4 mr-1" />
+          <span>Verificada</span>
+        </div>
+      );
+    } else if (account.verifiedStatus === 'pending') {
+      return (
+        <div className="flex items-center text-yellow-500 text-sm mt-2">
+          <AlertCircle className="w-4 h-4 mr-1" />
+          <span>Verificación pendiente</span>
+          <button
+            onClick={() => handleVerify(account.id)}
+            className="ml-2 text-indigo-400 hover:text-indigo-300"
+            title="Reintentar verificación"
+          >
+            <RefreshCw size={14} />
+          </button>
+        </div>
+      );
     } else {
-      console.log('Video ya aprobado, no se requiere acción');
+      return (
+        <div className="mt-2 flex items-center justify-center">
+          <AlertTriangle className="text-indigo-400 w-4 h-4 mr-1" />
+          <button
+            className="text-indigo-400 text-sm hover:underline"
+            onClick={() => handleVerify(account.id)}
+          >
+            Verificar
+          </button>
+        </div>
+      );
     }
   };
 
-  const renderMobileVideoCard = (video: Video, index: number) => {
-    let statusStyle = '';
-    let statusText = '';
-    let statusIcon = null;
+  // Función para renderizar el mensaje de estado de verificación
+  const renderStatusMessage = () => {
+    if (verificationStatus === 'idle') return null;
 
-    // Usar el valor exacto de status de la API
-    if (video.status === 0) {
-      statusStyle = 'bg-yellow-900/30 text-yellow-500 border border-yellow-700';
-      statusText = 'En proceso';
-      statusIcon = <Clock size={12} className="mr-1" />;
-    } else if (video.status === 1) {
-      statusStyle = 'bg-green-900/30 text-green-500 border border-green-700';
-      statusText = 'Aprobado';
-      statusIcon = <Check size={12} className="mr-1" />;
-    } else if (video.status === 2) {
-      statusStyle = 'bg-red-900/30 text-red-500 border border-red-700';
-      statusText = 'Rechazado';
-      statusIcon = <X size={12} className="mr-1" />;
-    }
+    const statusClasses = {
+      loading: 'text-blue-400',
+      success: 'text-green-400',
+      error: 'text-red-400'
+    };
 
-    // Verificar si el video cumple con el mínimo de vistas
-    const hasSufficientViews = (video.views || 0) >= 5000;
+    const statusIcons = {
+      loading: <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2"></div>,
+      success: <CheckCircle size={16} className="mr-2" />,
+      error: <AlertTriangle size={16} className="mr-2" />
+    };
 
     return (
-      <div key={`video-mobile-${index}-${video.id}`} className="bg-[#0c0c0c] border border-[#1c1c1c] rounded-md p-3 mb-3">
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <p className="text-gray-500">Campaña:</p>
-              <p className="text-white">{video.campaign || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Vistas:</p>
-              <p className={`${!hasSufficientViews ? 'text-yellow-500' : 'text-white'}`}>
-                {video.views?.toLocaleString() || '0'}
-                {!hasSufficientViews && <span className="block text-xs">Mínimo 5000 vistas</span>}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-500">Total a pagar:</p>
-              <p className="text-white font-medium">
-                ${(video.total_to_pay || video.price).toFixed(2)}
-                {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-500">Estado:</p>
-              <button
-                onClick={() => handleVerificationToggle(video.id)}
-                className={`px-2 py-1 rounded text-xs flex items-center ${statusStyle}`}
-              >
-                {statusIcon} {statusText}
-              </button>
-            </div>
-            <div className="col-span-2 mt-2">
-              <a
-                href={video.video_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#7c3aed] flex items-center text-sm hover:underline"
-              >
-                Ver video <ExternalLink size={14} className="ml-1" />
-              </a>
-            </div>
-          </div>
-        </div>
+      <div className={`mt-4 flex items-center ${statusClasses[verificationStatus]}`}>
+        {statusIcons[verificationStatus]}
+        <span>{statusMessage}</span>
       </div>
     );
   };
 
-  if (isLoading) {
-    console.log("Rendering loading state");
-    return (
-      <div className="p-3 sm:p-4 md:p-6 flex justify-center items-center h-[50vh]">
-        <div className="text-white flex flex-col items-center">
-          <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-[#7c3aed] rounded-full mb-3"></div>
-          Cargando datos...
-        </div>
-      </div>
-    );
-  }
-
-  const videoTableHeaders = ["CAMPAÑA", "CUENTAS", "VIDEO", "VISTAS", "TOTAL A PAGAR", "ESTADO"];
-
-  console.log("Rendering profile content");
   return (
     <div className="p-3 sm:p-4 md:p-6">
-      {error && (
-        <div className="bg-red-900/30 border border-red-700 rounded mb-6 p-3 text-red-400">
-          <p>{error}</p>
-          <button
-            onClick={() => fetchDataFromApi(email || '')}
-            className="mt-2 bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-sm"
-          >
-            Intentar de nuevo
-          </button>
+      <div className="bg-[#0c0c0c] border border-[#1c1c1c] rounded-md">
+        <div className="p-5 border-b border-[#1c1c1c]">
+          <h2 className="text-lg font-medium">Cuentas conectadas</h2>
+          <p className="text-sm text-gray-400 mt-1">Gestiona tus cuentas de TikTok vinculadas</p>
         </div>
-      )}
 
-      {showingExampleData && (
-        <div className="bg-blue-900/30 border border-blue-700 rounded mb-6 p-3 text-blue-400">
-          <p>La API no ha devuelto videos para mostrar. Se están mostrando videos de ejemplo.</p>
-        </div>
-      )}
-
-      <div className="bg-[#0c0c0c] border border-[#1c1c1c] rounded mb-6 md:mb-8 overflow-hidden">
-        <div className="flex justify-between p-3 md:p-4 font-medium">
-          <span className="text-white text-sm sm:text-base">Balance general</span>
-          <span className="text-white text-sm sm:text-base font-bold">{balance.toFixed(2)} US$</span>
-        </div>
-      </div>
-
-      <h3 className="text-base md:text-lg font-medium mb-3">Videos</h3>
-
-      <div className="hidden md:block bg-[#0c0c0c] border border-[#1c1c1c] rounded">
-        <table className="w-full">
-          <thead className="border-b border-[#1c1c1c] text-left text-xs text-gray-500">
-            <tr>
-              {videoTableHeaders.map((header, i) => (
-                <th key={`header-${i}`} className={`px-4 py-3 ${header === 'VISTAS' || header === 'TOTAL A PAGAR' ? 'text-right' : 'text-left'}`}>
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="text-white">
-            {videos.length > 0 ? (
-              videos.map((video, i) => {
-                let statusStyle = '';
-                let statusText = '';
-                let statusIcon = null;
-
-                // Usar el valor exacto de status de la API
-                if (video.status === 0) {
-                  statusStyle = 'bg-yellow-900/30 text-yellow-500 border border-yellow-700';
-                  statusText = 'En proceso';
-                  statusIcon = <Clock size={16} className="mr-1" />;
-                } else if (video.status === 1) {
-                  statusStyle = 'bg-green-900/30 text-green-500 border border-green-700';
-                  statusText = 'Aprobado';
-                  statusIcon = <Check size={16} className="mr-1" />;
-                } else if (video.status === 2) {
-                  statusStyle = 'bg-red-900/30 text-red-500 border border-red-700';
-                  statusText = 'Rechazado';
-                  statusIcon = <X size={16} className="mr-1" />;
-                }
-
-                // Verificar si el video cumple con el mínimo de vistas
-                const hasSufficientViews = (video.views || 0) >= 5000;
-
-                return (
-                  <tr key={`video-row-${i}-${video.id}`} className="border-b border-[#1c1c1c]">
-                    <td className="px-4 py-3">{video.campaign || 'N/A'}</td>
-                    <td className="px-4 py-3">{video.account || 'N/A'}</td>
-                    <td className="px-4 py-3">
-                      <a
-                        href={video.video_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#7c3aed] flex items-center hover:underline"
-                      >
-                        Ver video <ExternalLink size={16} className="ml-1" />
-                      </a>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={!hasSufficientViews ? 'text-yellow-500' : ''}>
-                        {video.views?.toLocaleString() || '0'}
-                        {!hasSufficientViews && <span className="block text-xs">Mínimo 5000 vistas</span>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="font-medium">
-                        ${(video.total_to_pay || video.price).toFixed(2)}
-                        {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleVerificationToggle(video.id)}
-                        className={`px-3 py-1 rounded text-sm flex items-center ${statusStyle}`}
-                      >
-                        {statusIcon} {statusText}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center">
-                  No hay videos disponibles para mostrar.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="md:hidden">
-        {videos.length > 0 ? (
-          videos.map((video, i) => renderMobileVideoCard(video, i))
-        ) : (
-          <div className="bg-[#0c0c0c] border border-[#1c1c1c] rounded p-4 text-center text-white">
-            No hay videos disponibles para mostrar.
-          </div>
-        )}
-      </div>
-
-      {/* Sección de verificación de cuentas de TikTok */}
-      {showTiktokVerificationSection && (
-        <div className="bg-[#0c0c0c] border border-[#1c1c1c] rounded-lg mt-8 mb-6 p-5">
-          <h2 className="text-xl font-medium mb-2">Verifica tus cuentas de TikTok</h2>
-
-          <p className="text-gray-400 mb-3">
-            Para poder procesar los pagos, es importante que verifiquemos que tu eres el dueño de la cuenta de TikTok para optar para la monetización.
-          </p>
-
-          <div className="flex items-center mb-3">
-            <AlertTriangle className="text-yellow-500 mr-2" size={18} />
-            <p className="text-yellow-500 text-sm">Este paso es obligatorio para recibir pagos.</p>
-          </div>
-
-          {pendingTiktokAccounts.length > 0 && (
-            <>
-              <div className="mb-3">
-                <p className="text-white mb-2">Cuentas pendientes por verificar:</p>
-                <div className="flex flex-wrap gap-2">
-                  {pendingTiktokAccounts.map(account => (
-                    <span key={account.id} className="inline-block bg-[#161616] text-white rounded-full px-3 py-1 text-sm">
-                      {account.username}
-                    </span>
-                  ))}
-                </div>
+        <div className="p-5">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#8e4dff] border-r-transparent"></div>
+              <p className="mt-2 text-gray-400">Cargando cuentas...</p>
+            </div>
+          ) : accounts.length === 0 ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="mx-auto mb-2 text-yellow-500" size={32} />
+              <p className="text-yellow-500">{error || 'No se encontraron cuentas de TikTok asociadas a este usuario.'}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-4">
+                {accounts.map((account) => (
+                  <div key={account.id} className="relative">
+                    <div className="bg-[#161616] text-white rounded-full px-4 py-2 flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${
+                        account.isVerified ? 'bg-green-500' :
+                        account.verifiedStatus === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}></div>
+                      <span>{account.username}</span>
+                    </div>
+                    {renderVerificationStatus(account)}
+                  </div>
+                ))}
               </div>
-            </>
+
+              {isCheckingStatus && (
+                <div className="mt-4 text-center text-xs text-gray-400 flex items-center justify-center">
+                  <RefreshCw size={12} className="mr-1 animate-spin" />
+                  <span>Verificando estado de cuentas pendientes...</span>
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-4 text-center text-red-400">
+                  <p>{error}</p>
+                  <button
+                    onClick={fetchTikTokAccounts}
+                    className="mt-2 text-indigo-400 hover:text-indigo-300 text-sm underline"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-
-          <button
-            className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-medium py-2 px-4 rounded-md mt-2"
-            onClick={handleNavigateToAccountsVerification}
-          >
-            Verificar Cuentas de TikTok
-          </button>
         </div>
-      )}
+      </div>
 
-      {showRejectionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black bg-opacity-75" onClick={handleCloseRejectionModal}></div>
-          <div className="relative bg-[#0c0c0c] rounded-lg w-11/12 max-w-md mx-auto p-5 text-white border border-[#1c1c1c]">
+      {/* Modal de verificación */}
+      {showVerificationModal && selectedAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+          <div className="bg-[#0c0c0c] border border-[#1c1c1c] rounded-lg w-full max-w-md p-6 relative">
             <button
-              onClick={handleCloseRejectionModal}
+              onClick={handleCloseModal}
               className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              disabled={isSubmitting}
             >
               <X size={24} />
             </button>
-            <div className="text-center">
-              <h3 className="text-xl font-semibold mb-6">Tu video no ha sido aceptado</h3>
-              <p className="text-gray-400 mb-2">MOTIVO:</p>
-              <div className="flex mb-6">
-                <div className="mr-3 mt-1">
-                </div>
-                <p className="text-white text-left text-sm">
-                  Nuestro equipo ha hecho una revisión manual de tu video y lamentamos informarte que no cumple con las condiciones de la campaña para optar al monetización.
-                </p>
+
+            <div className="mb-4">
+              <p className="text-gray-300 text-center">
+                Para poder procesar los pagos, es importante que verifiquemos
+                que tu eres el dueño de la siguiente cuenta de TikTok.
+              </p>
+            </div>
+
+            <div className="flex justify-center mb-8">
+              <div className="bg-[#161616] text-white rounded-full px-5 py-2.5 flex items-center">
+                <div className={`w-3 h-3 rounded-full mr-2 ${
+                  selectedAccount.isVerified ? 'bg-green-500' :
+                  selectedAccount.verifiedStatus === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                }`}></div>
+                <span>{selectedAccount.username}</span>
               </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-white font-medium mb-4">Pasos para verificar tu cuenta:</h3>
+              <ol className="space-y-2 text-gray-300">
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 bg-blue-500 text-white rounded-full h-5 w-5 flex items-center justify-center mr-2">1</span>
+                  <span>Copia el código</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 bg-blue-500 text-white rounded-full h-5 w-5 flex items-center justify-center mr-2">2</span>
+                  <span>Pégalo en la bio (perfil) de tu cuenta de TikTok</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 bg-blue-500 text-white rounded-full h-5 w-5 flex items-center justify-center mr-2">3</span>
+                  <span>Una vez lo hayas hecho, toca el botón "Verificar mi cuenta"</span>
+                </li>
+              </ol>
+            </div>
+
+            <p className="text-gray-300 mb-2">
+              Nuestro sistema revisará tu perfil y, si el código está visible, marcará tu cuenta como verificada.
+            </p>
+
+            <div className="mb-6">
+              <p className="text-gray-400 mb-2">Este es tu código:</p>
+              <div className="relative">
+                <div className="bg-[#161616] text-center p-3 rounded-md border border-[#1c1c1c] text-xl font-bold text-white">
+                  {verificationCode}
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(verificationCode);
+                    alert('Código copiado al portapapeles');
+                  }}
+                  className="absolute right-2 top-2 text-gray-400 hover:text-white"
+                  title="Copiar al portapapeles"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {renderStatusMessage()}
+
+            <div className="flex flex-col gap-2 mt-4">
+              <button
+                onClick={handleVerifyAccount}
+                className={`w-full bg-[#8e4dff] hover:bg-[#7c3aed] text-white py-3 px-4 rounded-md text-center transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={isSubmitting || verificationStatus === 'success'}
+              >
+                {isSubmitting && verificationStatus === 'loading' ? 'Procesando...' : 'Verificar Cuenta de TikTok'}
+              </button>
+
+              {selectedAccount.verifiedStatus === 'pending' && (
+                <button
+                  onClick={handleManualCheck}
+                  className="w-full border border-[#8e4dff] text-[#8e4dff] py-2 px-4 rounded-md text-center hover:bg-[#8e4dff10] transition-colors"
+                  disabled={isSubmitting || verificationStatus === 'success'}
+                >
+                  Verificar manualmente ahora
+                </button>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-center text-yellow-500 text-sm">
+              <AlertTriangle size={16} className="mr-2" />
+              <span>Este paso es obligatorio para recibir pagos.</span>
             </div>
           </div>
         </div>
@@ -688,4 +500,4 @@ const ProfileBalance = () => {
   );
 };
 
-export default ProfileBalance;
+export default ProfileConnectedAccounts;
