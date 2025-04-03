@@ -31,7 +31,6 @@ const VerifyCode: React.FC = () => {
 
     if (!storedEmail) {
       // Si no hay correo almacenado, redirigir a la página de inicio de sesión
-      console.log("No stored email found, redirecting to login");
       navigate('/signin');
       return;
     }
@@ -39,7 +38,6 @@ const VerifyCode: React.FC = () => {
     try {
       if (storedApiData) {
         const parsedData = JSON.parse(storedApiData);
-        console.log("API Response Data:", parsedData);
 
         // Guardar los datos de la API tal como vienen
         setApiData(parsedData);
@@ -50,34 +48,25 @@ const VerifyCode: React.FC = () => {
           if (firstItem.email_code) {
             // Usar el código exacto como viene de la API
             const apiCode = String(firstItem.email_code);
-            console.log("Using email_code from API data:", apiCode);
             setExpectedCode(apiCode);
-          } else {
-            console.log("No email_code found in first data item");
           }
-        } else {
-          console.log("No data array or empty data array in API response");
         }
 
         // Si no se encontró código en los datos, buscar en la raíz de la respuesta
         if (!expectedCode && parsedData.email_code) {
           const apiCode = String(parsedData.email_code);
-          console.log("Using email_code from API response root:", apiCode);
           setExpectedCode(apiCode);
         }
 
         if (!expectedCode) {
-          console.log("Could not find any verification code in the API response");
           setError("");
         }
       } else {
-        console.error("No API data found");
         setError("No se encontraron datos de verificación. Por favor, inicie sesión nuevamente.");
         setTimeout(() => navigate('/signin'), 3000);
         return;
       }
     } catch (error: any) {
-      console.error('Error parsing API data:', error);
       setError("Error al procesar los datos. Por favor, inicie sesión nuevamente.");
       setTimeout(() => navigate('/signin'), 3000);
       return;
@@ -145,35 +134,26 @@ const VerifyCode: React.FC = () => {
     try {
       // Obtener el código ingresado por el usuario
       const enteredCode = code.join('');
-      console.log(`User entered code: "${enteredCode}"`);
 
       if (!expectedCode) {
-        console.log("No verification code found in API data");
         setError('');
         return;
       }
 
-      console.log(`Comparing with API code: "${expectedCode}"`);
-
       // Verificar si el código ingresado coincide exactamente con el código de la API
       if (enteredCode === expectedCode) {
-        console.log("Verification successful - Codes match exactly!");
-
         // Código correcto, guardar información del usuario
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userEmail', email);
         localStorage.removeItem('isRegistering');
 
-        console.log("Redirecting to profile balance...");
         navigate('/profile-saldo');
       } else {
-        console.log("Verification failed: Codes don't match");
         setError('Código de verificación incorrecto. Por favor, inténtelo de nuevo.');
         setCode(Array(6).fill(''));
         inputRefs.current[0]?.focus();
       }
     } catch (error: any) {
-      console.error('Error de verificación:', error);
       setError(`Ocurrió un error al verificar el código: ${error.message}`);
     } finally {
       setIsVerifying(false);

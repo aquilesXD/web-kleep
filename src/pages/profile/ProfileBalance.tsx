@@ -79,27 +79,22 @@ const ProfileBalance = () => {
   };
 
   useEffect(() => {
-    console.log("isLoading:", isLoading);
+    // Código existente sin console.log
   }, [isLoading]);
 
   useEffect(() => {
-    console.log("Loading profile data...");
-
     const isAuthenticated = localStorage.getItem('isAuthenticated');
     if (!isAuthenticated) {
-      console.log("No authentication found, redirecting to signin");
       navigate('/signin');
       return;
     }
 
     const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) {
-      console.log("No email found, redirecting to signin");
       navigate('/signin');
       return;
     }
 
-    console.log("User authenticated:", userEmail);
     setEmail(userEmail);
 
     fetchDataFromApi(userEmail);
@@ -158,7 +153,6 @@ const ProfileBalance = () => {
       }
 
       const accountsData = await accountsResponse.json();
-      console.log("Datos de cuentas TikTok:", accountsData);
 
       // Procesar las cuentas de TikTok (suponiendo que vienen en accountsData.accounts)
       if (accountsData?.accounts && Array.isArray(accountsData.accounts)) {
@@ -182,7 +176,6 @@ const ProfileBalance = () => {
         setPendingTiktokAccounts([]);
       }
     } catch (error) {
-      console.error('Error al cargar cuentas de TikTok:', error);
       // No mostrar cuentas de ejemplo en caso de error
       setShowTiktokVerificationSection(false);
       setPendingTiktokAccounts([]);
@@ -199,14 +192,12 @@ const ProfileBalance = () => {
   }, [email]);
 
   const fetchDataFromApi = async (userEmail: string) => {
-    console.log(`Fetching API data for user: ${userEmail}`);
     setIsLoading(true);
     setError(null);
     setShowingExampleData(false);
 
     try {
       const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`;
-      console.log(`Making API request to: ${apiUrl}`);
 
       const response = await fetch(apiUrl);
 
@@ -215,7 +206,6 @@ const ProfileBalance = () => {
       }
 
       const data = await response.json();
-      console.log("API Response:", data);
 
       setApiResponseData(data);
 
@@ -223,39 +213,30 @@ const ProfileBalance = () => {
 
       processApiData(data, userEmail);
     } catch (error: any) {
-      console.error('Error al cargar datos:', error);
       setError(`No se pudo conectar con el servidor: ${error.message}`);
 
       const storedApiResponse = localStorage.getItem('apiResponse');
       if (storedApiResponse) {
         try {
-          console.log("Using previously stored API response due to fetch error");
           const parsedData = JSON.parse(storedApiResponse);
           processApiData(parsedData, userEmail);
         } catch (parseError) {
-          console.error('Error parsing stored API data:', parseError);
           showExampleDataForUser(userEmail);
         }
       } else {
         showExampleDataForUser(userEmail);
       }
     } finally {
-      console.log("API fetch completed, setting loading state to false");
       setIsLoading(false);
     }
   };
 
   // Función para procesar los datos de la API
   const processApiData = (data: any, userEmail: string) => {
-    console.log(`Processing API data for user: ${userEmail}`);
-    console.log("Raw API response:", data);
-
     // Verificar si el array data existe y tiene elementos
     const apiData = data?.data || [];
-    console.log(`API data array:`, apiData);
 
     if (Array.isArray(apiData) && apiData.length > 0) {
-      console.log(`Processing ${apiData.length} videos from API for user: ${userEmail}`);
       setShowingExampleData(false);
 
       // Usar directamente los datos de la API sin simulaciones
@@ -276,14 +257,6 @@ const ProfileBalance = () => {
 
         // Preferir el campo creator, si existe. Si no, usar email o un valor por defecto
         const creatorAccount = item.creator || item.email || `@user_${index}`;
-
-        console.log(`Video ${index}:`, {
-          status,
-          rawStatus: item.status,
-          totalToPay,
-          creator: creatorAccount,
-          views: item.views || 0
-        });
 
         return {
           id: `api-video-${index}-${Date.now()}`,
@@ -307,14 +280,11 @@ const ProfileBalance = () => {
       let totalBalance = 0;
       processedVideos.forEach((video, index) => {
         const amount = video.total_to_pay || 0;
-        console.log(`Adding to balance - Video ${index}: $${amount}`);
         totalBalance += amount;
       });
 
-      console.log(`Final calculated balance: $${totalBalance}`);
       setBalance(totalBalance);
     } else {
-      console.log(`No videos found in API data for user: ${userEmail}. Showing example data.`);
       showExampleDataForUser(userEmail);
     }
 
@@ -323,7 +293,6 @@ const ProfileBalance = () => {
 
   // Función para mostrar datos de ejemplo cuando no hay datos de la API
   const showExampleDataForUser = (userEmail: string) => {
-    console.log(`Generating example data for user: ${userEmail}`);
     setShowingExampleData(true);
 
     const emailHash = hashString(userEmail); // Generar un hash basado en el correo
@@ -379,7 +348,6 @@ const ProfileBalance = () => {
       totalBalance += price;
     }
 
-    console.log(`Generated ${exampleVideos.length} example videos`);
     setVideos(exampleVideos);
     setBalance(totalBalance);
   };
@@ -414,7 +382,7 @@ const ProfileBalance = () => {
     } else if (video.status === 2) {
       handleShowRejectionModal(videoId);
     } else {
-      console.log('Video ya aprobado, no se requiere acción');
+      // Video ya aprobado, no se requiere acción
     }
   };
 
@@ -493,7 +461,6 @@ const ProfileBalance = () => {
   };
 
   if (isLoading) {
-    console.log("Rendering loading state");
     return (
       <div className="p-3 sm:p-4 md:p-6 flex justify-center items-center h-[50vh]">
         <div className="text-white flex flex-col items-center">
@@ -506,7 +473,6 @@ const ProfileBalance = () => {
 
   const videoTableHeaders = ["CAMPAÑA", "CREADOR", "VIDEO", "VISTAS", "TOTAL A PAGAR", "ESTADO"];
 
-  console.log("Rendering profile content");
   return (
     <div className="p-3 sm:p-4 md:p-6">
       {error && (

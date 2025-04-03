@@ -44,9 +44,7 @@ const SignIn: React.FC = () => {
 
     try {
       // Realizar petición a la API
-      console.log(`Authenticating email: ${email}`);
       const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(email)}`;
-      console.log(`API URL: ${apiUrl}`);
 
       const response = await fetch(apiUrl);
 
@@ -55,12 +53,10 @@ const SignIn: React.FC = () => {
       }
 
       const responseData = await response.json();
-      console.log("Authentication API Response:", responseData);
 
       // Verificar si la API devolvió datos
       if (responseData && responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
         // La API devolvió datos para este correo, proceder con la autenticación
-        console.log("API returned data for this email, proceeding with authentication");
 
         // Guardar la respuesta exacta de la API sin modificaciones
         localStorage.setItem('userEmail', email);
@@ -71,11 +67,9 @@ const SignIn: React.FC = () => {
         navigate('/verify-code');
       } else {
         // La API no devolvió datos para este correo
-        console.log("API did not return any data for this email");
         setError('Correo electrónico no encontrado en el sistema. Por favor verifique o contacte a soporte.');
       }
     } catch (error: any) {
-      console.error('Error:', error);
       setError(`No se pudo conectar con el servidor: ${error.message}`);
     } finally {
       setIsLoading(false);

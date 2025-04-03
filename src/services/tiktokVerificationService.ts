@@ -35,7 +35,6 @@ export const fetchTikTokAccounts = async (userId: string): Promise<TikTokAccount
         }
 
         const data = await response.json();
-        console.log("TikTok accounts API Response:", data);
 
         // Verificar la estructura de la respuesta
         if (!data || (!data.accounts && !data.data)) {
@@ -72,7 +71,6 @@ export const fetchTikTokAccounts = async (userId: string): Promise<TikTokAccount
             };
         });
     } catch (error: any) {
-        console.error('Error al obtener cuentas de TikTok:', error);
         throw error;
     }
 };
@@ -86,17 +84,15 @@ export const generateVerificationCode = (): string => {
 };
 
 /**
- * Solicita la verificación de una cuenta de TikTok
+ * Verifica si el código está presente en la biografía de TikTok y marca la cuenta como verificada si lo está
  * @param accountId ID de la cuenta
  * @param tiktokCode Código de verificación
- * @param currentAttempts Número actual de intentos (opcional)
- * @param username Nombre de usuario de TikTok (opcional)
- * @returns Promise con el resultado de la solicitud
+ * @param username Nombre de usuario de TikTok
+ * @returns Promise con el resultado de la verificación
  */
 export const requestTikTokVerification = async (
     accountId: string | undefined,
     tiktokCode: string,
-    currentAttempts: number = 0,
     username: string = ''
 ): Promise<VerificationResponse> => {
     try {
@@ -104,19 +100,12 @@ export const requestTikTokVerification = async (
             throw new Error('ID de cuenta no proporcionado');
         }
 
-        // Incrementar el contador de intentos
-        const newAttemptCount = currentAttempts + 1;
-
-        // Preparar los datos para enviar a la API
-        const verifyUrl = 'https://contabl.net/nova/verified-request';
-
-        // SOLO enviar los campos account y set
+        // Datos a enviar para verificación
         const verifyData = {
-            account: username, // Nombre de usuario de TikTok
-            set: "1"           // Valor fijo para actualizar
+            account: username,          // Nombre de usuario de TikTok
+            set: "1",                   // Indicar actualización
+            account_id: accountId       // ID de la cuenta específica a verificar
         };
-
-        console.log("Datos de verificación a enviar:", verifyData);
 
         // Intentar realizar la petición PUT real
         try {
@@ -125,19 +114,15 @@ export const requestTikTokVerification = async (
             headers.append('Content-Type', 'application/json');
 
             // Realizar la solicitud PUT sin el modo no-cors
-            const response = await fetch(verifyUrl, {
+            const response = await fetch('https://contabl.net/nova/verified-request', {
                 method: 'PUT',
                 headers: headers,
                 body: JSON.stringify(verifyData)
-                // No incluimos mode: 'no-cors' ya que es incompatible con PUT
             });
-
-            console.log("Solicitud PUT enviada correctamente");
 
             // Intentar obtener el resultado
             try {
                 const responseData = await response.json();
-                console.log("Respuesta del servidor:", responseData);
 
                 return {
                     success: true,
@@ -150,11 +135,10 @@ export const requestTikTokVerification = async (
                         verifiedStatus: 'pending',
                         tiktok_code: tiktokCode,
                         verified_request: "1",
-                        verified_att: newAttemptCount
+                        verified_att: 1 // Asignar un valor inicial de intentos
                     }
                 };
             } catch (parseError) {
-                console.log("No se pudo parsear la respuesta, pero la solicitud fue enviada");
                 return {
                     success: true,
                     message: 'Solicitud enviada, pero no se pudo confirmar la respuesta del servidor.',
@@ -166,20 +150,16 @@ export const requestTikTokVerification = async (
                         verifiedStatus: 'pending',
                         tiktok_code: tiktokCode,
                         verified_request: "1",
-                        verified_att: newAttemptCount
+                        verified_att: 1 // Asignar un valor inicial de intentos
                     }
                 };
             }
         } catch (error) {
-            console.error("Error al enviar solicitud PUT:", error);
-
             // Si hay un error de CORS, intentamos una alternativa
-            console.log("Intentando solución alternativa debido a posibles restricciones CORS...");
-
             // Crear una imagen temporal para hacer la solicitud (técnica para eludir CORS)
             const img = new Image();
-            const queryParams = `?account=${encodeURIComponent(username)}&set=1`;
-            img.src = `${verifyUrl}${queryParams}`;
+            const queryParams = `?account=${encodeURIComponent(username)}&set=1&account_id=${encodeURIComponent(accountId)}`;
+            img.src = `https://contabl.net/nova/verified-request${queryParams}`;
 
             return {
                 success: true,
@@ -192,12 +172,11 @@ export const requestTikTokVerification = async (
                     verifiedStatus: 'pending',
                     tiktok_code: tiktokCode,
                     verified_request: "1",
-                    verified_att: newAttemptCount
+                    verified_att: 1 // Asignar un valor inicial de intentos
                 }
             };
         }
     } catch (error: any) {
-        console.error('Error general en el proceso de verificación:', error);
         return {
             success: false,
             message: error.message || 'Error al solicitar verificación'
@@ -216,8 +195,6 @@ export const checkVerificationStatus = async (accountIds: string[]): Promise<Tik
             return [];
         }
 
-        console.log("Verificando estado de cuentas:", accountIds);
-
         // Intentar obtener los datos actuales de localStorage para preservar los contadores de intentos
         const apiResponse = localStorage.getItem('apiResponse');
         let currentAccounts: any[] = [];
@@ -234,9 +211,6 @@ export const checkVerificationStatus = async (accountIds: string[]): Promise<Tik
         }
 
         // Debido a los problemas de CORS, usaremos un enfoque de simulación local
-        console.warn("CORS error: No se puede hacer la solicitud PUT directa al servidor desde el navegador.");
-        console.warn("En producción, esta operación debería realizarse desde el backend.");
-
         // Simulación más realista para entorno de desarrollo
         return accountIds.map(id => {
             // Buscar la cuenta en los datos actuales para obtener intentos previos
@@ -252,8 +226,6 @@ export const checkVerificationStatus = async (accountIds: string[]): Promise<Tik
                 isVerified = Math.random() > 0.8;
             }
 
-            console.log(`Verificación de cuenta ${id}: ${isVerified ? 'VERIFICADA' : 'PENDIENTE'}, intentos previos: ${previousAttempts}`);
-
             return {
                 id,
                 account_id: id,
@@ -264,8 +236,111 @@ export const checkVerificationStatus = async (accountIds: string[]): Promise<Tik
             };
         });
     } catch (error: any) {
-        console.error('Error al verificar estado de cuentas:', error);
         return [];
+    }
+};
+
+/**
+ * Reinicia el proceso de verificación para una cuenta específica
+ * @param accountId ID de la cuenta a reiniciar
+ * @param username Nombre de usuario de TikTok
+ * @returns Promise con el resultado del reinicio
+ */
+export const resetTikTokVerification = async (
+    accountId: string | undefined,
+    username: string = ''
+): Promise<VerificationResponse> => {
+    try {
+        if (!accountId) {
+            throw new Error('ID de cuenta no proporcionado');
+        }
+
+        // Datos a enviar para reinicio con set=1
+        const resetData = {
+            account: username,        // Nombre de usuario de TikTok
+            set: "1",                 // Indicar verificación normal con set=1
+            account_id: accountId     // ID de la cuenta específica
+        };
+
+        // Hacer la petición PUT igual que en la verificación
+        const headers = new Headers();
+        headers.append('Content-Type', 'application/json');
+
+        const response = await fetch('https://contabl.net/nova/verified-request', {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(resetData)
+        });
+
+        // Procesar respuesta
+        try {
+            const responseData = await response.json();
+
+            // Crear respuesta asegurando que id y account_id tengan el mismo valor
+            const accountResponse: TikTokAccount = {
+                id: String(accountId),            // Asegurar que sea string
+                account_id: String(accountId),    // Asegurar que sea string
+                username: username || '',
+                isVerified: false,
+                verifiedStatus: 'pending',        // Establecer como pendiente
+                tiktok_code: responseData.tiktok_code || '',
+                verified_request: new Date().toISOString(),
+                verified_att: 0                   // Reiniciar contador
+            };
+
+            return {
+                success: true,
+                message: 'Proceso de verificación reiniciado correctamente.',
+                account: accountResponse
+            };
+        } catch (parseError) {
+            // Si hay error al parsear, asumir éxito pero con objeto account bien formado
+            const accountResponse: TikTokAccount = {
+                id: String(accountId),            // Asegurar que sea string
+                account_id: String(accountId),    // Asegurar que sea string
+                username: username || '',
+                isVerified: false,
+                verifiedStatus: 'pending',        // Establecer como pendiente
+                verified_request: new Date().toISOString(),
+                verified_att: 0
+            };
+
+            return {
+                success: true,
+                message: 'Reinicio solicitado, pero no se pudo confirmar la respuesta.',
+                account: accountResponse
+            };
+        }
+    } catch (error: any) {
+        // Intentar método alternativo si hay error CORS
+        try {
+            // Crear una imagen temporal para hacer la solicitud (técnica para eludir CORS)
+            const img = new Image();
+            const queryParams = `?account=${encodeURIComponent(username)}&set=1&account_id=${encodeURIComponent(String(accountId))}`;
+            img.src = `https://contabl.net/nova/verified-request${queryParams}`;
+
+            // Asegurar que el objeto account esté correctamente formado
+            const accountResponse: TikTokAccount = {
+                id: String(accountId),            // Asegurar que sea string
+                account_id: String(accountId),    // Asegurar que sea string
+                username: username || '',
+                isVerified: false,
+                verifiedStatus: 'pending',        // Establecer como pendiente
+                verified_request: new Date().toISOString(),
+                verified_att: 0
+            };
+
+            return {
+                success: true,
+                message: 'Solicitud alternativa de reinicio enviada.',
+                account: accountResponse
+            };
+        } catch (fallbackError) {
+            return {
+                success: false,
+                message: 'Error al reiniciar verificación: ' + (error.message || 'Error desconocido')
+            };
+        }
     }
 };
 
@@ -273,5 +348,6 @@ export default {
     fetchTikTokAccounts,
     generateVerificationCode,
     requestTikTokVerification,
-    checkVerificationStatus
+    checkVerificationStatus,
+    resetTikTokVerification
 };

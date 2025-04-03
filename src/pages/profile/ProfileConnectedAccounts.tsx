@@ -10,7 +10,7 @@ interface TikTokAccount {
   tiktok_code?: string;
   account_id?: string;
   verified_request?: string;
-  verified_att?: number; // Added verified_att to track attempts
+  verified_att?: number | undefined; // Contador de intentos (opcional, pero siempre número)
 }
 
 // Función para calcular el tiempo restante formateado
@@ -85,7 +85,6 @@ const ProfileConnectedAccounts = () => {
         setTimeout(() => checkPendingAccountsStatus(), 1000);
       }
     } catch (error: any) {
-      console.error('Error al cargar cuentas:', error);
       setError(`Error al cargar cuentas: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -133,7 +132,6 @@ const ProfileConnectedAccounts = () => {
 
       return findUserId(parsedResponse) || '1'; // Valor por defecto para pruebas
     } catch (e) {
-      console.error('Error al parsear la respuesta:', e);
       return null;
     }
   };
@@ -225,7 +223,6 @@ const ProfileConnectedAccounts = () => {
         });
       }
     } catch (error) {
-      console.error('Error al verificar estado de cuentas pendientes:', error);
     } finally {
       setIsCheckingStatus(false);
     }
@@ -304,50 +301,19 @@ const ProfileConnectedAccounts = () => {
     setStatusMessage('Procesando solicitud...');
 
     try {
-      // Obtener el número actual de intentos
-      const currentAttempts = selectedAccount.verified_att || 0;
-
       // Extraer el nombre de usuario (sin el @ si lo tiene)
       const tiktokUsername = selectedAccount.username.startsWith('@')
         ? selectedAccount.username.substring(1)
         : selectedAccount.username;
 
-      console.log(`Iniciando verificación de la cuenta TikTok: ${tiktokUsername}`);
-
-      // Verificar si ya ha completado 3 intentos
-      if (currentAttempts > 0 && currentAttempts % 3 === 0) {
-        // El usuario ya ha realizado 3 intentos, reiniciamos el contador pero mantenemos el mismo código
-        setVerificationStatus('info');
-        setStatusMessage(`Has completado 3 intentos de verificación. Se reiniciará el contador de intentos.`);
-
-        // Reiniciar el contador de intentos pero mantener el mismo código
-        setAccounts(prev =>
-          prev.map(acc =>
-            acc.id === selectedAccount.id ?
-              {
-                ...acc,
-                verified_att: 0 // Reiniciar el contador de intentos
-              } : acc
-          )
-        );
-
-        // Informar al usuario
-        alert(`Has completado 3 intentos de verificación. Se reiniciará el contador, pero mantendrás el mismo código de verificación.`);
-
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Llamar al servicio de verificación incluyendo el contador de intentos y username
+      // Llamar al servicio de verificación, solo pasamos el accountId y verificationCode
       const result = await tiktokVerificationService.requestTikTokVerification(
         selectedAccount.account_id,
         verificationCode,
-        currentAttempts,
-        tiktokUsername // Pasar el nombre de usuario de TikTok
+        tiktokUsername
       );
 
       // En la verificación inicial, siempre mantener el estado como "pendiente"
-      // nunca marcar como verificado inmediatamente
       if (result.success) {
         // Actualizar el estado de la cuenta localmente
         setAccounts(prev =>
@@ -355,23 +321,16 @@ const ProfileConnectedAccounts = () => {
             acc.id === selectedAccount.id ?
               {
                 ...acc,
-                isVerified: false, // Nunca marcar como verificado aquí
-                verifiedStatus: 'pending',
-                verified_request: new Date().toISOString(),
-                verified_att: (acc.verified_att || 0) + 1 // Incrementar el contador de intentos
+                isVerified: false,
+                verifiedStatus: 'pending',  // Establecer como pendiente inmediatamente
+                verified_request: new Date().toISOString() // Nueva solicitud de verificación
+                // Ya no incrementamos verified_att, lo maneja el backend
               } : acc
           )
         );
 
-        // Verificar si este es el tercer intento después de actualizar
-        const newAttemptCount = (selectedAccount.verified_att || 0) + 1;
-        if (newAttemptCount % 3 === 0) {
-          setVerificationStatus('warning');
-          setStatusMessage(`Este ha sido tu intento #${newAttemptCount}. Si la verificación no tiene éxito, se reiniciará el contador de intentos.`);
-        } else {
-          setVerificationStatus('success');
-          setStatusMessage(`Solicitud de verificación enviada correctamente (intento ${newAttemptCount}/3). Verificaremos tu cuenta en breve.`);
-        }
+        setVerificationStatus('success');
+        setStatusMessage('Proceso de verificación reiniciado. La cuenta está en verificación pendiente.');
 
         // Registrar el tiempo de este intento
         const currentTime = new Date().getTime();
@@ -402,20 +361,13 @@ const ProfileConnectedAccounts = () => {
         // Cerrar el modal después de mostrar mensaje de éxito por 2 segundos
         setTimeout(() => {
           setShowVerificationModal(false);
-
-          // Mensaje específico dependiendo del número de intentos
-          if (newAttemptCount % 3 === 0) {
-            alert('Has completado los 3 intentos de verificación. Si no tiene éxito, se reiniciará el contador para intentos adicionales.');
-          } else {
-            alert(`Solicitud de verificación enviada correctamente (intento ${newAttemptCount}/3). Recuerda colocar este código en la bio de tu perfil de TikTok.`);
-          }
+          alert(`Solicitud de verificación enviada correctamente. Recuerda colocar este código en la bio de tu perfil de TikTok.`);
         }, 2000);
       } else {
         setVerificationStatus('error');
         setStatusMessage(result.message);
       }
     } catch (error: any) {
-      console.error('Error al verificar la cuenta:', error);
       setVerificationStatus('error');
       setStatusMessage(error.message || 'Error al procesar la solicitud');
     } finally {
@@ -449,21 +401,11 @@ const ProfileConnectedAccounts = () => {
     setStatusMessage('Verificando cuenta...');
 
     try {
-      // Obtener el número actual de intentos
-      const currentAttempts = selectedAccount.verified_att || 0;
-
-      // Aquí podría ir una llamada a un endpoint específico para verificación manual
-      // Por ahora, simularemos un retraso
+      // Simulamos un retraso para la verificación
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Simulación más realista: no verificar en los primeros intentos
-      let isSuccess = false;
-
-      // Solo posibilidad de verificación exitosa después de varios intentos
-      if (currentAttempts >= 3) {
-        // 20% de probabilidad después de 3 intentos
-        isSuccess = Math.random() > 0.8;
-      }
+      // Simulación más realista: éxito aleatorio
+      let isSuccess = Math.random() > 0.7; // 30% de probabilidad de éxito
 
       if (isSuccess) {
         setAccounts(prev =>
@@ -473,8 +415,8 @@ const ProfileConnectedAccounts = () => {
                 ...acc,
                 isVerified: true,
                 verifiedStatus: undefined,
-                verified_request: undefined, // Limpiar la solicitud de verificación al éxito
-                // No incrementamos verified_att aquí, ya que fue exitoso
+                verified_request: undefined // Limpiar la solicitud de verificación al éxito
+                // No modificamos verified_att, lo maneja el backend
               } : acc
           )
         );
@@ -486,14 +428,14 @@ const ProfileConnectedAccounts = () => {
           setShowVerificationModal(false);
         }, 2000);
       } else {
-        // Incrementar el contador de intentos y actualizar el timestamp
+        // Actualizar solo el timestamp, no el contador
         setAccounts(prev =>
           prev.map(acc =>
             acc.id === selectedAccount.id ?
               {
                 ...acc,
-                verified_request: new Date().toISOString(), // Actualizar timestamp para nuevo periodo de espera
-                verified_att: (acc.verified_att || 0) + 1 // Incrementar contador de intentos al fallar
+                verified_request: new Date().toISOString() // Actualizar timestamp para nuevo periodo de espera
+                // No modificamos verified_att, lo maneja el backend
               } : acc
           )
         );
@@ -509,6 +451,75 @@ const ProfileConnectedAccounts = () => {
     }
   };
 
+  // Función para reiniciar el proceso de verificación
+  const handleResetVerification = async () => {
+    if (!selectedAccount) return;
+
+    setIsSubmitting(true);
+    setVerificationStatus('loading');
+    setStatusMessage('Reiniciando proceso de verificación...');
+
+    try {
+      // Verificar que account_id existe y es válido
+      if (!selectedAccount.account_id) {
+        setVerificationStatus('error');
+        setStatusMessage('Error: No se puede reiniciar la verificación porque el ID de cuenta es inválido.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Extraer el nombre de usuario sin el @ si lo tiene
+      const tiktokUsername = selectedAccount.username.startsWith('@')
+        ? selectedAccount.username.substring(1)
+        : selectedAccount.username;
+
+      // Llamar al servicio con set=1 para reiniciar
+      const result = await tiktokVerificationService.resetTikTokVerification(
+        selectedAccount.account_id,
+        tiktokUsername
+      );
+
+      if (result.success) {
+        // Verificar que el objeto account en el resultado es válido
+        if (!result.account) {
+          setVerificationStatus('error');
+          setStatusMessage('Error al reiniciar: La respuesta no incluye información de la cuenta.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Actualizar el estado de la cuenta
+        setAccounts(prev =>
+          prev.map(acc =>
+            acc.id === selectedAccount.id ?
+            {
+              ...acc,
+              verified_att: 0,            // Reiniciar contador
+              verifiedStatus: 'pending',  // Establecer como pendiente inmediatamente
+              verified_request: new Date().toISOString() // Nueva solicitud de verificación
+            } : acc
+          )
+        );
+
+        setVerificationStatus('success');
+        setStatusMessage('Proceso de verificación reiniciado. La cuenta está en verificación pendiente.');
+
+        // Cerrar modal después de 2 segundos sin volver a abrirlo
+        setTimeout(() => {
+          handleCloseModal();
+        }, 2000);
+      } else {
+        setVerificationStatus('error');
+        setStatusMessage(result.message || 'Error al reiniciar la verificación');
+      }
+    } catch (error: any) {
+      setVerificationStatus('error');
+      setStatusMessage(error.message || 'Error al reiniciar el proceso. Inténtalo más tarde.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Función para renderizar el indicador de estado de la cuenta
   const renderVerificationStatus = (account: TikTokAccount) => {
     if (account.isVerified) {
@@ -519,24 +530,33 @@ const ProfileConnectedAccounts = () => {
         </div>
       );
     } else if (account.verifiedStatus === 'pending') {
+      // Verificar si la cuenta ha alcanzado el límite de intentos
+      const hasMaxAttempts = account.verified_att !== undefined && account.verified_att >= 3;
+
       return (
         <div>
-          <div className="flex items-center text-yellow-500 text-sm mt-2">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            <span>Verificación pendiente</span>
-            <button
-              onClick={() => handleVerify(account.id)}
-              className="ml-2 text-indigo-400 hover:text-indigo-300"
-              title="Reintentar verificación"
-            >
-              <RefreshCw size={14} />
-            </button>
+          <div
+            className={`flex items-center ${hasMaxAttempts ? 'text-orange-500' : 'text-yellow-500'} text-sm mt-2 ${hasMaxAttempts ? 'cursor-pointer hover:underline' : ''}`}
+            onClick={hasMaxAttempts ? () => handleVerify(account.id) : undefined}
+            title={hasMaxAttempts ? "Haz clic para reiniciar el proceso de verificación" : undefined}
+          >
+            {hasMaxAttempts ? <AlertTriangle className="w-4 h-4 mr-1" /> : <AlertCircle className="w-4 h-4 mr-1" />}
+            <span>{hasMaxAttempts ? 'Reintentar Verificacion' : 'Verificación pendiente'}</span>
           </div>
 
-          {account.verified_request && (
+          {account.verified_request && !hasMaxAttempts && (
             <div className="text-gray-400 text-xs mt-1 flex items-center">
               <Clock size={12} className="mr-1" />
               {getTimeRemaining(account.verified_request)}
+            </div>
+          )}
+
+          {hasMaxAttempts && (
+            <div
+              className="text-orange-400 text-xs mt-1 cursor-pointer hover:underline"
+              onClick={() => handleVerify(account.id)}
+              title="Haz clic para reiniciar el proceso de verificación"
+            >
             </div>
           )}
         </div>
@@ -620,7 +640,10 @@ const ProfileConnectedAccounts = () => {
                     <div className="bg-[#161616] text-white rounded-full px-4 py-2 flex items-center">
                       <div className={`w-3 h-3 rounded-full mr-2 ${
                         account.isVerified ? 'bg-green-500' :
-                        account.verifiedStatus === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                        account.verifiedStatus === 'pending'
+                          ? (account.verified_att !== undefined && account.verified_att >= 3
+                              ? 'bg-orange-500' : 'bg-yellow-500')
+                          : 'bg-red-500'
                       }`}></div>
                       <span>{account.username}</span>
                     </div>
@@ -666,8 +689,9 @@ const ProfileConnectedAccounts = () => {
 
             <div className="mb-4">
               <p className="text-gray-300 text-center">
-                Para poder procesar los pagos, es importante que verifiquemos
-                que tu eres el dueño de la siguiente cuenta de TikTok.
+                {selectedAccount && typeof selectedAccount.verified_att === 'number' && selectedAccount.verified_att >= 3
+                  ? "Has alcanzado el límite de intentos. Para continuar, necesitas reiniciar el proceso de verificación."
+                  : "Para poder procesar los pagos, es importante que verifiquemos que tu eres el dueño de la siguiente cuenta de TikTok."}
               </p>
             </div>
 
@@ -675,7 +699,10 @@ const ProfileConnectedAccounts = () => {
               <div className="bg-[#161616] text-white rounded-full px-5 py-2.5 flex items-center">
                 <div className={`w-3 h-3 rounded-full mr-2 ${
                   selectedAccount.isVerified ? 'bg-green-500' :
-                  selectedAccount.verifiedStatus === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                  selectedAccount.verifiedStatus === 'pending'
+                    ? (selectedAccount.verified_att !== undefined && selectedAccount.verified_att >= 3
+                        ? 'bg-orange-500' : 'bg-yellow-500')
+                    : 'bg-red-500'
                 }`}></div>
                 <span>{selectedAccount.username}</span>
               </div>
@@ -729,44 +756,18 @@ const ProfileConnectedAccounts = () => {
 
             <div className="flex flex-col gap-2 mt-4">
               <button
-                onClick={handleVerifyAccount}
+                onClick={selectedAccount && typeof selectedAccount.verified_att === 'number' && selectedAccount.verified_att >= 3
+                  ? handleResetVerification
+                  : handleVerifyAccount}
                 className={`w-full bg-[#8e4dff] hover:bg-[#7c3aed] text-white py-3 px-4 rounded-md text-center transition-colors ${(isSubmitting || timeRemaining > 0) ? 'opacity-70 cursor-not-allowed' : ''}`}
                 disabled={isSubmitting || verificationStatus === 'success' || timeRemaining > 0}
               >
                 {isSubmitting && verificationStatus === 'loading' ? 'Procesando...' :
                  timeRemaining > 0 ? `Espera ${timeRemaining}s para verificar` :
-                 'Verificar Cuenta de TikTok'}
+                 selectedAccount && typeof selectedAccount.verified_att === 'number' && selectedAccount.verified_att >= 3
+                  ? 'Reiniciar proceso de verificación'
+                  : 'Verificar Cuenta de TikTok'}
               </button>
-
-              {/* Mostrar contador de intentos */}
-              {selectedAccount && (
-                <div className="text-xs text-center mt-1">
-                  {selectedAccount.verified_att && selectedAccount.verified_att > 0 ? (
-                    <div className={`${selectedAccount.verified_att % 3 === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                      Intentos: <span className="font-medium">{selectedAccount.verified_att % 3 || 3}</span>/3
-                      {selectedAccount.verified_att % 3 === 0 && (
-                        <span className="ml-1">
-                          (Ciclo completado - Se reiniciará el contador)
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-gray-400">
-                      Intentos: 0/3
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedAccount.verifiedStatus === 'pending' && (
-                <button
-                  onClick={handleManualCheck}
-                  className={`w-full border border-[#8e4dff] text-[#8e4dff] py-2 px-4 rounded-md text-center hover:bg-[#8e4dff10] transition-colors ${(isSubmitting || timeRemaining > 0) ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  disabled={isSubmitting || verificationStatus === 'success' || timeRemaining > 0}
-                >
-                  {timeRemaining > 0 ? `Espera ${timeRemaining}s para verificar` : 'Verificar manualmente ahora'}
-                </button>
-              )}
             </div>
 
             <div className="mt-4 flex items-center justify-center text-yellow-500 text-sm">
