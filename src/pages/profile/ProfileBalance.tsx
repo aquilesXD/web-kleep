@@ -13,7 +13,7 @@ interface Video {
   total_to_pay?: number;
   verified?: boolean;
   views?: number;
-  account?: string;
+  creator?: string; // Cambiado de account a creator
   status?: number; // 0: En proceso, 1: Aprobado, 2: Rechazado
 }
 
@@ -32,6 +32,7 @@ interface ApiUser {
   views?: number;
   total_to_pay?: string | number;
   status?: number; // Asegurarse de que el campo status esté presente
+  creator?: string; // Campo para la cuenta de TikTok del creador
 }
 
 interface PlatformOption {
@@ -273,11 +274,14 @@ const ProfileBalance = () => {
         // Usar el valor exacto de status de la API - Sin conversiones
         const status = item.status !== undefined ? item.status : 0;
 
+        // Preferir el campo creator, si existe. Si no, usar email o un valor por defecto
+        const creatorAccount = item.creator || item.email || `@user_${index}`;
+
         console.log(`Video ${index}:`, {
           status,
           rawStatus: item.status,
           totalToPay,
-          account: item.email || userEmail,
+          creator: creatorAccount,
           views: item.views || 0
         });
 
@@ -293,7 +297,7 @@ const ProfileBalance = () => {
           verified: status === 1, // Para compatibilidad con el código existente
           status: status, // Usar el valor exacto de la API
           views: item.views || 0,
-          account: item.email || userEmail
+          creator: creatorAccount // Usar la cuenta de TikTok del creador
         };
       });
 
@@ -366,7 +370,7 @@ const ProfileBalance = () => {
         views: views,
         verified: status === 1, // Para compatibilidad
         status: status, // 0: En proceso, 1: Aprobado, 2: Rechazado
-        account: userEmail
+        creator: `@tiktok_user_${i}` // Usar un nombre de usuario de TikTok de ejemplo
       };
 
       exampleVideos.push(video);
@@ -446,6 +450,10 @@ const ProfileBalance = () => {
               <p className="text-white">{video.campaign || 'N/A'}</p>
             </div>
             <div>
+              <p className="text-gray-500">Creador:</p>
+              <p className="text-white">{video.creator || 'N/A'}</p>
+            </div>
+            <div>
               <p className="text-gray-500">Vistas:</p>
               <p className={`${!hasSufficientViews ? 'text-yellow-500' : 'text-white'}`}>
                 {video.views?.toLocaleString() || '0'}
@@ -496,7 +504,7 @@ const ProfileBalance = () => {
     );
   }
 
-  const videoTableHeaders = ["CAMPAÑA", "CUENTAS", "VIDEO", "VISTAS", "TOTAL A PAGAR", "ESTADO"];
+  const videoTableHeaders = ["CAMPAÑA", "CREADOR", "VIDEO", "VISTAS", "TOTAL A PAGAR", "ESTADO"];
 
   console.log("Rendering profile content");
   return (
@@ -567,7 +575,7 @@ const ProfileBalance = () => {
                 return (
                   <tr key={`video-row-${i}-${video.id}`} className="border-b border-[#1c1c1c]">
                     <td className="px-4 py-3">{video.campaign || 'N/A'}</td>
-                    <td className="px-4 py-3">{video.account || 'N/A'}</td>
+                    <td className="px-4 py-3">{video.creator || 'N/A'}</td>
                     <td className="px-4 py-3">
                       <a
                         href={video.video_link}
@@ -675,6 +683,9 @@ const ProfileBalance = () => {
               <p className="text-gray-400 mb-2">MOTIVO:</p>
               <div className="flex mb-6">
                 <div className="mr-3 mt-1">
+                  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 2C9.2 2 2 9.2 2 18C2 28 10 33.6 17.3 34C17.3 34 20.5 26.5 27.1 21.7C32.7 17.5 34.6 10.5 34.6 10.5C35.5 13 36 15.4 36 18C36 27.4 27.9 35 18 35C8.1 35 0 27.4 0 18C0 8.6 8.1 1 18 1C18.4 1 18.7 1 19.1 1L18 2Z" fill="#017AFF"></path>
+                  </svg>
                 </div>
                 <p className="text-white text-left text-sm">
                   Nuestro equipo ha hecho una revisión manual de tu video y lamentamos informarte que no cumple con las condiciones de la campaña para optar al monetización.
