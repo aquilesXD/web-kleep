@@ -9,6 +9,7 @@ export const ALLOWED_EMAILS = [
 
 // Clave para almacenar los correos en localStorage
 const STORED_EMAILS_KEY = 'clipper_registered_emails';
+const API_BASE_URL = 'https://contabl.net';
 
 /**
  * Inicializa el servicio de autenticación cargando los correos electrónicos guardados
@@ -26,11 +27,9 @@ export const initAuthService = (): void => {
           ALLOWED_EMAILS.push(email.toLowerCase());
         }
       });
-
-      console.log('Correos electrónicos cargados del almacenamiento local:', ALLOWED_EMAILS);
     }
   } catch (error) {
-    console.error('Error al cargar los correos electrónicos registrados:', error);
+    // Error al cargar los correos electrónicos
   }
 };
 
@@ -48,9 +47,8 @@ export const addAllowedEmail = (email: string): void => {
     try {
       // Guardar en localStorage para persistencia
       localStorage.setItem(STORED_EMAILS_KEY, JSON.stringify(ALLOWED_EMAILS));
-      console.log(`Correo electrónico registrado con éxito: ${normalizedEmail}`);
     } catch (error) {
-      console.error('Error al guardar el correo electrónico:', error);
+      // Error al guardar el correo electrónico
     }
   }
 };
@@ -73,5 +71,187 @@ export const logout = (): void => {
   localStorage.removeItem('apiResponse');
 };
 
+/**
+ * Envía el código de verificación al correo electrónico del usuario
+ * @param userId ID del usuario
+ * @param email Correo electrónico del usuario
+ * @returns Promise con el resultado del envío y el nuevo código si está disponible
+ */
+export const sendVerificationCode = async (
+  userId: string,
+  email: string
+): Promise<{ success: boolean; message: string; newCode?: string }> => {
+  try {
+    console.log('sendVerificationCode iniciando con userId:', userId, 'email:', email);
+
+    if (!userId || !email) {
+      console.error('Error: ID de usuario o email no proporcionados');
+      throw new Error('ID de usuario y correo electrónico son requeridos');
+    }
+
+    // Datos a enviar al endpoint
+    const sendCodeData = {
+      id_user: userId,
+      email: email
+    };
+
+    console.log('Datos a enviar:', sendCodeData);
+
+    // Configurar headers
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+
+    // Realizar la solicitud POST
+    console.log('Realizando petición a https://contabl.net/nova/send-code');
+    const response = await fetch('https://contabl.net/nova/send-code', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(sendCodeData)
+    });
+
+    console.log('Respuesta recibida:', response.status, response.ok);
+
+    // Procesar respuesta
+    try {
+      const responseData = await response.json();
+      console.log('Datos de respuesta:', responseData);
+
+      // Extraer el nuevo código de la respuesta si está disponible
+      // Primero buscar en la raíz
+      let newCode = responseData.email_code;
+      console.log('Código en respuesta.email_code:', newCode);
+
+      // Luego buscar en data[0]
+      if (!newCode && responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
+        newCode = responseData.data[0].email_code;
+        console.log('Código en respuesta.data[0].email_code:', newCode);
+      }
+
+      // Si aún no hay código, intentar buscar recursivamente
+      if (!newCode) {
+        // Función recursiva para buscar el código en un objeto
+        const findCode = (obj: any): string | undefined => {
+          if (!obj || typeof obj !== 'object') return undefined;
+
+          // Buscar propiedades que contengan "code" o "código"
+          for (const key in obj) {
+            if (key.toLowerCase().includes('code') || key.toLowerCase().includes('codigo') || key.toLowerCase().includes('código')) {
+              if (obj[key] && (typeof obj[key] === 'string' || typeof obj[key] === 'number')) {
+                return String(obj[key]);
+              }
+            }
+
+            // Buscar recursivamente en objetos anidados
+            if (typeof obj[key] === 'object') {
+              const found = findCode(obj[key]);
+              if (found) return found;
+            }
+          }
+
+          return undefined;
+        };
+
+        newCode = findCode(responseData);
+        console.log('Código encontrado en búsqueda recursiva:', newCode);
+      }
+
+      // Si no se encontró ningún código en la respuesta, no proporcionar uno
+      if (!newCode) {
+        console.warn('⚠️ No se encontró ningún código en la respuesta del servidor');
+      } else {
+        newCode = String(newCode);
+      }
+
+      // Actualizar el apiResponse en localStorage si tenemos un código
+      if (newCode) {
+        try {
+          // Primero intentar obtener el apiResponse existente
+          const apiResponseStr = localStorage.getItem('apiResponse');
+          let apiResponse: any;
+
+          if (apiResponseStr) {
+            try {
+              apiResponse = JSON.parse(apiResponseStr);
+            } catch (e) {
+              // Si hay error al parsear, crear un objeto nuevo
+              apiResponse = { data: [{ user_id: userId }] };
+            }
+          } else {
+            // Si no hay apiResponse, crear uno nuevo
+            apiResponse = { data: [{ user_id: userId }] };
+          }
+
+          // Actualizar el código en apiResponse
+          if (apiResponse.data && Array.isArray(apiResponse.data) && apiResponse.data.length > 0) {
+            apiResponse.data[0].email_code = newCode;
+          } else {
+            // Si no hay estructura data, crear una
+            apiResponse.data = [{ user_id: userId, email_code: newCode }];
+          }
+
+          // También actualizar en la raíz para mayor compatibilidad
+          apiResponse.email_code = newCode;
+
+          // Guardar en localStorage
+          localStorage.setItem('apiResponse', JSON.stringify(apiResponse));
+          console.log('localStorage actualizado con el nuevo código');
+        } catch (storageError) {
+          console.error('Error al actualizar localStorage:', storageError);
+        }
+      }
+
+      return {
+        success: true,
+        message: responseData.message || 'Código enviado correctamente',
+        newCode: newCode
+      };
+    } catch (parseError) {
+      console.error('Error al parsear respuesta JSON:', parseError);
+
+      return {
+        success: response.ok,
+        message: response.ok
+          ? 'Código enviado correctamente'
+          : 'Error al enviar el código de verificación'
+      };
+    }
+  } catch (error: any) {
+    console.error('Error general en sendVerificationCode:', error);
+    return {
+      success: false,
+      message: error.message || 'Error al enviar el código de verificación'
+    };
+  }
+};
+
+/**
+ * Obtiene los datos de "video to pay" para un usuario específico
+ * @param userId ID del usuario
+ * @returns Promise con los datos de video to pay
+ */
+export const getVideoToPay = async (email: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/nova/get-videos-to-pay?email=${email}`);
+
+    if (!response.ok) {
+      throw new Error(`Error en la petición: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error("Error en getVideoToPay:", error);
+    throw new Error(error.message || "No se pudo obtener la data del usuario");
+  }
+};
 // Inicializar el servicio al importar el módulo
 initAuthService();
+
+// Export all functions
+export default {
+  ALLOWED_EMAILS,
+  isEmailAllowed,
+  addAllowedEmail,
+  logout,
+  sendVerificationCode,
+  getVideoToPay
+};
