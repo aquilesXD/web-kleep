@@ -33,44 +33,61 @@ const SignIn: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!isValidEmail) {
       setError('Por favor ingrese un correo electrónico válido');
       return;
     }
-
+  
     setIsLoading(true);
     setError(null);
-
+  
     try {
-      // Realizar petición a la API
       const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(email)}`;
-
       const response = await fetch(apiUrl);
-
+  
       if (!response.ok) {
         throw new Error(`Error en la petición: ${response.status}`);
       }
-
+  
       const responseData = await response.json();
-
-      // Verificar si la API devolvió datos
-      if (responseData && responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
-        // La API devolvió datos para este correo, proceder con la autenticación
-
-        // Guardar la respuesta exacta de la API sin modificaciones
+  
+      if (responseData?.data?.length > 0) {
+        // Guardar en localStorage
         localStorage.setItem('userEmail', email);
         localStorage.setItem('apiResponse', JSON.stringify(responseData));
         localStorage.setItem('isRegistering', 'false');
+  
+        // Extraer userId
+        const extractUserId = (data: any): string => {
+          const user = data.data[0];
+          return user.user_id || user.id_user || user.id || '';
+        };
+        const userId = extractUserId(responseData);
+  
+        if (!userId) throw new Error("No se pudo obtener el ID de usuario.");
+  
+        // Enviar código al correo
+        const { sendVerificationCode } = await import('../../services/authService');
+        await sendVerificationCode(userId, email);
+console.log("📤 Código enviado al correo");
 
-        // Redirigir a la página de verificación
-        navigate('/verify-code');
+// Esperar que el backend actualice
+await new Promise((res) => setTimeout(res, 3000));
+
+// Hacer nuevo GET para obtener el nuevo código actualizado
+const refreshedResponse = await fetch(apiUrl);
+const refreshedData = await refreshedResponse.json();
+
+// Guardar el nuevo apiResponse con el código actualizado
+localStorage.setItem('apiResponse', JSON.stringify(refreshedData));
+
+navigate('/verify-code');
       } else {
-        // La API no devolvió datos para este correo
-        setError('Correo electrónico no encontrado en el sistema. Por favor verifique o contacte a soporte.');
+        setError('Correo electrónico no encontrado en el sistema.');
       }
     } catch (error: any) {
-      setError(`No se pudo conectar con el servidor: ${error.message}`);
+      setError(`Error al iniciar sesión: ${error.message}`);
     } finally {
       setIsLoading(false);
     }

@@ -407,7 +407,7 @@ const ProfileBalance = () => {
     }
 
     // Verificar si el video cumple con el mínimo de vistas
-    const hasSufficientViews = (video.views || 0) >= 5000;
+    const hasSufficientViews = (video.views || 0) >= 2000;
 
     return (
       <div key={`video-mobile-${index}-${video.id}`} className="bg-[#0c0c0c] border border-[#1c1c1c] rounded-md p-3 mb-3">
@@ -425,7 +425,7 @@ const ProfileBalance = () => {
               <p className="text-gray-500">Vistas:</p>
               <p className={`${!hasSufficientViews ? 'text-yellow-500' : 'text-white'}`}>
                 {video.views?.toLocaleString() || '0'}
-                {!hasSufficientViews && <span className="block text-xs">Mínimo 5000 vistas</span>}
+                {!hasSufficientViews && <span className="block text-xs">Mínimo 2000 vistas</span>}
               </p>
             </div>
             <div>
@@ -536,7 +536,7 @@ const ProfileBalance = () => {
                 }
 
                 // Verificar si el video cumple con el mínimo de vistas
-                const hasSufficientViews = (video.views || 0) >= 5000;
+                const hasSufficientViews = (video.views || 0) >= 2000;
 
                 return (
                   <tr key={`video-row-${i}-${video.id}`} className="border-b border-[#1c1c1c]">
@@ -555,7 +555,7 @@ const ProfileBalance = () => {
                     <td className="px-4 py-3 text-right">
                       <span className={!hasSufficientViews ? 'text-yellow-500' : ''}>
                         {video.views?.toLocaleString() || '0'}
-                        {!hasSufficientViews && <span className="block text-xs">Mínimo 5000 vistas</span>}
+                        {!hasSufficientViews && <span className="block text-xs">Mínimo 2000 vistas</span>}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
