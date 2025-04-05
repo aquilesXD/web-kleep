@@ -15,6 +15,7 @@ interface Video {
   views?: number;
   creator?: string; // Cambiado de account a creator
   status?: number; // 0: En proceso, 1: Aprobado, 2: Rechazado
+  status_note?: string;
 }
 
 interface ApiUser {
@@ -33,6 +34,7 @@ interface ApiUser {
   total_to_pay?: string | number;
   status?: number; // Asegurarse de que el campo status esté presente
   creator?: string; // Campo para la cuenta de TikTok del creador
+  status_note?: string;
 }
 
 interface PlatformOption {
@@ -57,9 +59,12 @@ const ProfileBalance = () => {
   const [showingExampleData, setShowingExampleData] = useState<boolean>(false);
   const [showRejectionModal, setShowRejectionModal] = useState<boolean>(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [pendingTiktokAccounts, setPendingTiktokAccounts] = useState<PendingAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState<boolean>(false);
   const [showTiktokVerificationSection, setShowTiktokVerificationSection] = useState<boolean>(false);
+
+  
 
   const navigate = useNavigate();
 
@@ -73,7 +78,7 @@ const ProfileBalance = () => {
     { name: 'X', icon: '🐦' },
     { name: 'TradingView', icon: '📊' }
   ];
-
+  
   const handleNavigateToAccountsVerification = () => {
     navigate('/profile-cuentas');
   };
@@ -229,34 +234,54 @@ const ProfileBalance = () => {
       setIsLoading(false);
     }
   };
+  
+  const findCreatorByEmail = (email: string): string | undefined => {
+    try {
+      if (!email) return undefined;
+  
+      const raw = localStorage.getItem('connectedAccounts');
+      if (!raw) return undefined;
+  
+      const accounts = JSON.parse(raw);
+      const match = accounts.find((acc: any) => acc.email === email);
+      return match?.username;
+    } catch (err) {
+      console.warn("❌ Error al buscar creator por email:", err);
+      return undefined;
+    }
+  };
+  
+  // 🔍 Extraer creator desde el link de TikTok si tiene formato /@usuario/
+  const extractCreatorFromLink = (link: string): string | null => {
+    const match = link?.match(/@([^/]+)\/video/);
+    return match ? match[1] : null;
+  };
 
   // Función para procesar los datos de la API
   const processApiData = (data: any, userEmail: string) => {
-    // Verificar si el array data existe y tiene elementos
     const apiData = data?.data || [];
-
+  
     if (Array.isArray(apiData) && apiData.length > 0) {
       setShowingExampleData(false);
-
-      // Usar directamente los datos de la API sin simulaciones
+  
       const processedVideos = apiData.map((item: ApiUser, index: number) => {
-        // Asegurar que total_to_pay sea un número
         let totalToPay = 0;
         if (item.total_to_pay !== undefined && item.total_to_pay !== null) {
           totalToPay = typeof item.total_to_pay === 'string'
             ? parseFloat(item.total_to_pay)
             : Number(item.total_to_pay);
         }
-
-        // Asegurar que el valor no es NaN
         if (isNaN(totalToPay)) totalToPay = 0;
-
-        // Usar el valor exacto de status de la API - Sin conversiones
+  
         const status = item.status !== undefined ? item.status : 0;
-
-        // Preferir el campo creator, si existe. Si no, usar email o un valor por defecto
-        const creatorAccount = item.creator || item.email || `@user_${index}`;
-
+  
+        // ✅ Usar el creator individual de cada video o un nombre genérico
+        const creatorAccount =
+        item.creator ||
+        findCreatorByEmail(item.email ?? '') ||
+        extractCreatorFromLink(item.video_link ?? '') ||
+       `@user_${index}`;
+        
         return {
           id: `api-video-${index}-${Date.now()}`,
           title: item.first_name ? `Video de ${item.first_name}` : `Vídeo ${index + 1}`,
@@ -266,30 +291,31 @@ const ProfileBalance = () => {
           campaign: item.campaign || 'Campaña estándar',
           video_link: item.video_link || '#',
           total_to_pay: totalToPay,
-          verified: status === 1, // Para compatibilidad con el código existente
-          status: status, // Usar el valor exacto de la API
-          views: item.views || 0,
-          creator: creatorAccount // Usar la cuenta de TikTok del creador
+          verified: status === 1,
+          status: status,
+          status_note: item.status_note || '',
+          views: (item.views || 0) >= 2000 ? item.views : 0,
+          creator: creatorAccount
         };
       });
-
+  
       setVideos(processedVideos);
-
-      // Calcular balance total sumando TODOS los videos
+  
       let totalBalance = 0;
-      processedVideos.forEach((video, index) => {
-        const amount = video.total_to_pay || 0;
-        totalBalance += amount;
+      processedVideos.forEach((video) => {
+        if ((video.views || 0) >= 2000) {
+          totalBalance += video.total_to_pay || 0;
+        }
       });
 
       setBalance(totalBalance);
     } else {
       showExampleDataForUser(userEmail);
     }
-
+  
     setIsLoading(false);
   };
-
+  
   // Función para mostrar datos de ejemplo cuando no hay datos de la API
   const showExampleDataForUser = (userEmail: string) => {
     setShowingExampleData(true);
@@ -362,8 +388,11 @@ const ProfileBalance = () => {
   };
 
   const handleShowRejectionModal = (videoId: string) => {
-    setSelectedVideoId(videoId);
-    setShowRejectionModal(true);
+    const video = videos.find(v => v.id === videoId);
+    if (video) {
+      setSelectedVideo(video); // Aquí debes tener: const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+      setShowRejectionModal(true);
+    }
   };
 
   const handleCloseRejectionModal = () => {
@@ -426,8 +455,8 @@ const ProfileBalance = () => {
             <div>
               <p className="text-gray-500">Total a pagar:</p>
               <p className="text-white font-medium">
-                ${(video.total_to_pay || video.price).toFixed(2)}
-                {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
+              {(hasSufficientViews ? (video.total_to_pay || video.price).toFixed(2) : "$0.00")}
+              {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
               </p>
             </div>
             <div>
@@ -554,16 +583,19 @@ const ProfileBalance = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-medium">
-                        ${(video.total_to_pay || video.price).toFixed(2)}
-                        {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
-                      </span>
+                    <span className="font-medium">
+                    {(hasSufficientViews ? (video.total_to_pay || video.price).toFixed(2) : "$0.00")}
+                    {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
+                   </span>
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => handleVerificationToggle(video.id)}
-                        className={`px-3 py-1 rounded text-sm flex items-center ${statusStyle}`}
-                      >
+                         onClick={video.status === 2 ? () => handleVerificationToggle(video.id) : undefined}
+                         disabled={video.status !== 2}
+                         className={`px-3 py-1 rounded text-sm flex items-center 
+                           ${statusStyle} 
+                           ${video.status !== 2 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
+                       >
                         {statusIcon} {statusText}
                       </button>
                     </td>
@@ -629,30 +661,38 @@ const ProfileBalance = () => {
         </div>
       )}
 
-      {showRejectionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black bg-opacity-75" onClick={handleCloseRejectionModal}></div>
-          <div className="relative bg-[#0c0c0c] rounded-lg w-11/12 max-w-md mx-auto p-5 text-white border border-[#1c1c1c]">
-            <button
-              onClick={handleCloseRejectionModal}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
-            >
-              <X size={24} />
-            </button>
-            <div className="text-center">
-              <h3 className="text-xl font-semibold mb-6">Tu video no ha sido aceptado</h3>
-              <p className="text-gray-400 mb-2">MOTIVO:</p>
-              <div className="flex mb-6">
-                <div className="mr-3 mt-1">
-                </div>
-                <p className="text-white text-left text-sm">
-                  Nuestro equipo ha hecho una revisión manual de tu video y lamentamos informarte que no cumple con las condiciones de la campaña para optar al monetización.
-                </p>
-              </div>
+{showRejectionModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="absolute inset-0 bg-black bg-opacity-75" onClick={handleCloseRejectionModal}></div>
+
+    <div className="relative bg-[#0c0c0c] rounded-lg w-11/12 max-w-md mx-auto p-5 text-white border border-[#1c1c1c]">
+      <button
+        onClick={handleCloseRejectionModal}
+        className="absolute top-4 right-4 text-gray-400 hover:text-white"
+      >
+        <X size={24} />
+      </button>
+
+      <div className="text-center">
+        <h3 className="text-xl font-semibold mb-6">Tu video no ha sido aceptado</h3>
+        <p className="text-gray-400 mb-2">MOTIVO:</p>
+
+        {selectedVideo?.status_note ? (
+          <div className="flex justify-center mb-6">
+            <div className="mr-3 mt-1">
+              {/* Aquí puedes poner un icono si lo deseas */}
             </div>
+            <p className="text-sm text-red-400 whitespace-pre-line text-left max-w-xs">
+              {selectedVideo.status_note}
+            </p>
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-gray-500 italic mb-6">Sin motivo especificado.</p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
