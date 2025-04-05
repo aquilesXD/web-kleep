@@ -70,7 +70,6 @@ const SignIn: React.FC = () => {
         // Enviar código al correo
         const { sendVerificationCode } = await import('../../services/authService');
         await sendVerificationCode(userId, email);
-console.log("📤 Código enviado al correo");
 
 // Esperar que el backend actualice
 await new Promise((res) => setTimeout(res, 3000));

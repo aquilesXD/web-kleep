@@ -8,11 +8,27 @@ import Layout from './components/layout/Layout';
 import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import VerifyCode from './pages/auth/VerifyCode';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#0c0c0c]">
+        {/* 🔥 Toast container global */}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#161616',
+              color: '#fff',
+              border: '1px solid #3f3f3f',
+              padding: '12px 16px',
+              fontSize: '14px'
+            }
+          }}
+        />
+
         <Routes>
           {/* Auth Routes */}
           <Route path="/signin" element={<SignIn />} />

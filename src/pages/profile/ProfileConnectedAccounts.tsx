@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, X, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import tiktokVerificationService from '../../services/tiktokVerificationService';
+import { toast } from 'react-hot-toast';
 
 interface TikTokAccount {
   id: string;
@@ -361,7 +362,7 @@ const ProfileConnectedAccounts = () => {
         // Cerrar el modal después de mostrar mensaje de éxito por 2 segundos
         setTimeout(() => {
           setShowVerificationModal(false);
-          alert(`Solicitud de verificación enviada correctamente. Recuerda colocar este código en la bio de tu perfil de TikTok.`);
+          toast.success('Verificación enviada. Coloca el código en tu bio de TikTok.');
         }, 2000);
       } else {
         setVerificationStatus('error');
@@ -544,13 +545,14 @@ const ProfileConnectedAccounts = () => {
             <span>{hasMaxAttempts ? 'Reintentar Verificacion' : 'Verificación pendiente'}</span>
           </div>
 
-          {account.verified_request && !hasMaxAttempts && (
-            <div className="text-gray-400 text-xs mt-1 flex items-center">
-              <Clock size={12} className="mr-1" />
-              {getTimeRemaining(account.verified_request)}
-            </div>
-          )}
-
+        {/*
+{account.verified_request && !hasMaxAttempts && (
+  <div className="text-gray-400 text-xs mt-1 flex items-center">
+    <Clock size={12} className="mr-1" />
+    {getTimeRemaining(account.verified_request)}
+  </div>
+)}
+*/}
           {hasMaxAttempts && (
             <div
               className="text-orange-400 text-xs mt-1 cursor-pointer hover:underline"

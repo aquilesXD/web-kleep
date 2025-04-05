@@ -206,7 +206,7 @@ export const checkVerificationStatus = async (accountIds: string[]): Promise<Tik
                     currentAccounts = parsedResponse.data;
                 }
             } catch (e) {
-                console.error("Error parsing API response:", e);
+               
             }
         }
 

@@ -137,7 +137,6 @@ const ProfileBalance = () => {
       }
 
       if (!userId) {
-        console.warn('No se pudo determinar el ID de usuario');
         // No mostrar la sección de verificación si no podemos obtener el ID
         setShowTiktokVerificationSection(false);
         setLoadingAccounts(false);
@@ -374,15 +373,11 @@ const ProfileBalance = () => {
 
   const handleVerificationToggle = (videoId: string) => {
     const video = videos.find(v => v.id === videoId);
-
+  
     if (!video) return;
-
-    if (video.status === 0) {
+  
+    if (video.status === 2) {
       handleShowRejectionModal(videoId);
-    } else if (video.status === 2) {
-      handleShowRejectionModal(videoId);
-    } else {
-      // Video ya aprobado, no se requiere acción
     }
   };
 
@@ -471,7 +466,7 @@ const ProfileBalance = () => {
     );
   }
 
-  const videoTableHeaders = ["CAMPAÑA", "CREADOR", "VIDEO", "VISTAS", "TOTAL A PAGAR", "ESTADO"];
+  const videoTableHeaders = ["CAMPAÑA", "CUENTAS", "VIDEO", "VISTAS", "TOTAL A PAGAR", "ESTADO"];
 
   return (
     <div className="p-3 sm:p-4 md:p-6">
@@ -649,9 +644,6 @@ const ProfileBalance = () => {
               <p className="text-gray-400 mb-2">MOTIVO:</p>
               <div className="flex mb-6">
                 <div className="mr-3 mt-1">
-                  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18 2C9.2 2 2 9.2 2 18C2 28 10 33.6 17.3 34C17.3 34 20.5 26.5 27.1 21.7C32.7 17.5 34.6 10.5 34.6 10.5C35.5 13 36 15.4 36 18C36 27.4 27.9 35 18 35C8.1 35 0 27.4 0 18C0 8.6 8.1 1 18 1C18.4 1 18.7 1 19.1 1L18 2Z" fill="#017AFF"></path>
-                  </svg>
                 </div>
                 <p className="text-white text-left text-sm">
                   Nuestro equipo ha hecho una revisión manual de tu video y lamentamos informarte que no cumple con las condiciones de la campaña para optar al monetización.

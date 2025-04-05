@@ -135,7 +135,6 @@ const codeTimestampRef = useRef<number>(0);
       localStorage.setItem('latest_verification_code', trimmed);
       localStorage.setItem('latest_code_timestamp', String(Date.now()));
     } catch (e) {
-      console.warn("No se pudo guardar en localStorage:", e);
     }
   
     setExpectedCode(trimmed);

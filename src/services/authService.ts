@@ -82,10 +82,8 @@ export const sendVerificationCode = async (
   email: string
 ): Promise<{ success: boolean; message: string; newCode?: string }> => {
   try {
-    console.log('sendVerificationCode iniciando con userId:', userId, 'email:', email);
 
     if (!userId || !email) {
-      console.error('Error: ID de usuario o email no proporcionados');
       throw new Error('ID de usuario y correo electrónico son requeridos');
     }
 
@@ -95,36 +93,29 @@ export const sendVerificationCode = async (
       email: email
     };
 
-    console.log('Datos a enviar:', sendCodeData);
 
     // Configurar headers
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
 
     // Realizar la solicitud POST
-    console.log('Realizando petición a https://contabl.net/nova/send-code');
     const response = await fetch('https://contabl.net/nova/send-code', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(sendCodeData)
     });
 
-    console.log('Respuesta recibida:', response.status, response.ok);
-
     // Procesar respuesta
     try {
       const responseData = await response.json();
-      console.log('Datos de respuesta:', responseData);
-
+    
       // Extraer el nuevo código de la respuesta si está disponible
       // Primero buscar en la raíz
       let newCode = responseData.email_code;
-      console.log('Código en respuesta.email_code:', newCode);
 
       // Luego buscar en data[0]
       if (!newCode && responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
         newCode = responseData.data[0].email_code;
-        console.log('Código en respuesta.data[0].email_code:', newCode);
       }
 
       // Si aún no hay código, intentar buscar recursivamente
@@ -152,12 +143,10 @@ export const sendVerificationCode = async (
         };
 
         newCode = findCode(responseData);
-        console.log('Código encontrado en búsqueda recursiva:', newCode);
       }
 
       // Si no se encontró ningún código en la respuesta, no proporcionar uno
       if (!newCode) {
-        console.warn('⚠️ No se encontró ningún código en la respuesta del servidor');
       } else {
         newCode = String(newCode);
       }
@@ -194,9 +183,7 @@ export const sendVerificationCode = async (
 
           // Guardar en localStorage
           localStorage.setItem('apiResponse', JSON.stringify(apiResponse));
-          console.log('localStorage actualizado con el nuevo código');
         } catch (storageError) {
-          console.error('Error al actualizar localStorage:', storageError);
         }
       }
 
@@ -206,7 +193,6 @@ export const sendVerificationCode = async (
         newCode: newCode
       };
     } catch (parseError) {
-      console.error('Error al parsear respuesta JSON:', parseError);
 
       return {
         success: response.ok,
@@ -216,7 +202,6 @@ export const sendVerificationCode = async (
       };
     }
   } catch (error: any) {
-    console.error('Error general en sendVerificationCode:', error);
     return {
       success: false,
       message: error.message || 'Error al enviar el código de verificación'
@@ -239,7 +224,6 @@ export const getVideoToPay = async (email: string) => {
 
     return await response.json();
   } catch (error: any) {
-    console.error("Error en getVideoToPay:", error);
     throw new Error(error.message || "No se pudo obtener la data del usuario");
   }
 };
