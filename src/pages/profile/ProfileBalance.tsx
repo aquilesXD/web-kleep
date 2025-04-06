@@ -577,10 +577,12 @@ const ProfileBalance = () => {
                       </a>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={!hasSufficientViews ? 'text-yellow-500' : ''}>
-                        {video.views?.toLocaleString() || '0'}
-                        {!hasSufficientViews && <span className="block text-xs">Mínimo 2000 vistas</span>}
-                      </span>
+                     <span className={!hasSufficientViews ? 'text-yellow-500' : ''}>
+                     {video.views?.toLocaleString() || '0'}
+                     {!hasSufficientViews && (
+                     <span className="block text-xs">Mínimo 2000 vistas</span>
+                     )}
+                     </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                     <span className="font-medium">
