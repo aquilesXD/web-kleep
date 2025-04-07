@@ -294,7 +294,7 @@ const ProfileBalance = () => {
           verified: status === 1,
           status: status,
           status_note: item.status_note || '',
-          views: (item.views || 0) >= 2000 ? item.views : 0,
+          views: item.views || 0,
           creator: creatorAccount
         };
       });
@@ -456,8 +456,10 @@ const ProfileBalance = () => {
               <p className="text-gray-500">Total a pagar:</p>
               <p className="text-white font-medium">
               {(hasSufficientViews ? (video.total_to_pay || video.price).toFixed(2) : "$0.00")}
-              {!hasSufficientViews && <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>}
-              </p>
+              {!hasSufficientViews && (
+              <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>
+              )}
+             </p>
             </div>
             <div>
               <p className="text-gray-500">Estado:</p>
@@ -577,10 +579,12 @@ const ProfileBalance = () => {
                       </a>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={!hasSufficientViews ? 'text-yellow-500' : ''}>
-                        {video.views?.toLocaleString() || '0'}
-                        {!hasSufficientViews && <span className="block text-xs">Mínimo 2000 vistas</span>}
-                      </span>
+                     <span className={(video.views ?? 0) < 2000 ? 'text-yellow-500' : ''}>
+                     {video.views?.toLocaleString() ?? '0'}
+                     </span>
+                     {(video.views ?? 0) < 2000 && (
+                     <span className="block text-xs text-yellow-500">Mínimo 2000 vistas</span>
+                     )}
                     </td>
                     <td className="px-4 py-3 text-right">
                     <span className="font-medium">
@@ -589,16 +593,15 @@ const ProfileBalance = () => {
                    </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                         onClick={video.status === 2 ? () => handleVerificationToggle(video.id) : undefined}
-                         disabled={video.status !== 2}
-                         className={`px-3 py-1 rounded text-sm flex items-center 
-                           ${statusStyle} 
-                           ${video.status !== 2 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
-                       >
-                        {statusIcon} {statusText}
-                      </button>
-                    </td>
+                    <button
+                     onClick={video.status === 2 ? () => handleVerificationToggle(video.id) : undefined}
+                     className={`px-3 py-1 rounded text-sm flex items-center
+                     ${statusStyle}
+                     ${video.status !== 2 ? 'cursor-default pointer-events-none' : 'hover:opacity-90 cursor-pointer'}`}
+                      >
+                   {statusIcon} {statusText}
+                 </button>
+                   </td>
                   </tr>
                 );
               })
