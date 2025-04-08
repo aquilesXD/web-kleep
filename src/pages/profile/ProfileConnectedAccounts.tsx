@@ -739,9 +739,19 @@ const ProfileConnectedAccounts = () => {
                   {verificationCode}
                 </div>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(verificationCode);
-                    alert('Código copiado al portapapeles');
+                  onClick={async () => {
+                    try {
+                      if (!verificationCode.trim()) {
+                        toast.error('El código está vacío, no se puede copiar.');
+                        return;
+                      }
+                  
+                      await navigator.clipboard.writeText(verificationCode);
+                      toast.success('Código copiado al portapapeles');
+                    } catch (err) {
+                      console.error("Error al copiar:", err);
+                      toast.error('No se pudo copiar el código.');
+                    }
                   }}
                   className="absolute right-2 top-2 text-gray-400 hover:text-white"
                   title="Copiar al portapapeles"

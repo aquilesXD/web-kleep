@@ -457,7 +457,7 @@ const ProfileBalance = () => {
               <p className="text-white font-medium">
               {(hasSufficientViews ? (video.total_to_pay || video.price).toFixed(2) : "$0.00")}
               {!hasSufficientViews && (
-              <span className="block text-yellow-500 text-xs">* Pendiente de vistas</span>
+              <span className="block text-yellow-500 text-xs">Pendiente de vistas</span>
               )}
              </p>
             </div>
@@ -600,7 +600,7 @@ const ProfileBalance = () => {
                      ${video.status !== 2 ? 'cursor-default pointer-events-none' : 'hover:opacity-90 cursor-pointer'}`}
                       >
                    {statusIcon} {statusText}
-                 </button>
+                   </button>
                    </td>
                   </tr>
                 );

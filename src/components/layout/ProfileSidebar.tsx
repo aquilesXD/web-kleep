@@ -5,14 +5,17 @@ import { logout } from '../../services/authService';
 
 interface ProfileSidebarProps {
   mobile?: boolean;
+  onCloseMobileMenu?: () => void;
 }
 
-const ProfileSidebar = ({ mobile = false }: ProfileSidebarProps) => {
+const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ mobile, onCloseMobileMenu }) => {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>('Usuario');
   const [userInitials, setUserInitials] = useState<string>('U');
+  
+
 
   // Obtener el nombre del usuario al cargar el componente
   useEffect(() => {
@@ -170,7 +173,7 @@ const ProfileSidebar = ({ mobile = false }: ProfileSidebarProps) => {
             className={`flex items-center ${mobile ? 'px-3 py-2 text-[14px]' : 'px-6 py-2.5 text-[15px]'} ${
               path === item.path ? 'text-white font-medium' : 'text-gray-400 font-medium'
             }`}
-            onClick={mobile ? () => document.body.click() : undefined}
+            onClick={mobile && onCloseMobileMenu ? onCloseMobileMenu : undefined}
           >
             <span className="mr-3">
               {item.icon}
