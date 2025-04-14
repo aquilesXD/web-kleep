@@ -9,6 +9,14 @@ import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import VerifyCode from './pages/auth/VerifyCode';
 import { Toaster } from 'react-hot-toast';
+import Campaign from './components/camapaign/Campaign';
+import CampaignStartHere from './components/camapaign/CampaignStartHere';
+import CampaignRewards from './components/camapaign/CampaignRewards';
+import { CampaignAds } from './components/camapaign/CampaignAds';
+import Home from './components/camapaign/Home';
+import { NotificationsPage } from './components/notifications/NotificationsPage';
+import { CampaignVideos } from './components/camapaign/CampaignVideos';
+
 
 function App() {
   return (
@@ -35,8 +43,20 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/verify-code" element={<VerifyCode />} />
 
+          {/* Campaing Routes*/}
+        <Route path="/" element={<Campaign />} />
+        <Route path="/campaign" element={<Campaign />} />
+        <Route path="/campaign-start-here" element={<CampaignStartHere />} />
+        <Route path="/campaign-rewards" element={<CampaignRewards />} />
+        <Route path="/campaign-ads" element={<CampaignAds />} />
+        <Route path="/campaign-home" element={<Home />} />
+        <Route path="/campaign-videos" element={<CampaignVideos />} />
+
           {/* Default Route - Redirect to SignIn */}
           <Route path="/" element={<Navigate to="/signin" replace />} />
+
+          {/* Notifications Route */}
+        <Route path="/notifications" element={<NotificationsPage />} />
 
           {/* Protected Routes */}
           <Route path="/" element={<Layout />}>

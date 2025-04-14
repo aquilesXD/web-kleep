@@ -3,6 +3,7 @@ import ProfileSidebar from './ProfileSidebar';
 import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import LogoKleep from '../icons/LogoKleep';
+import Sidebar from './Sidebar';
 
 
 
@@ -57,6 +58,7 @@ const Layout = () => {
         <div className="flex flex-col lg:flex-row h-full md:h-[calc(100vh-48px)] rounded-xl overflow-hidden border border-[#1c1c1c]">
           {/* Left sidebar - Hidden on mobile */}
           <div className="hidden lg:block w-64 border-r border-[#1c1c1c]">
+          <Sidebar />
             <ProfileSidebar />
           </div>
 

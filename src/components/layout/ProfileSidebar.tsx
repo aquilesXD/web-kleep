@@ -101,12 +101,12 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ mobile, onCloseMobileMe
 
   // Definimos todos los items del menú, pero solo mostraremos algunos
   const allMenuItems = [
-    //{
-    //  title: 'General',
-     // icon: <Settings size={18} strokeWidth={1.75} />,
-    //  path: '/profile',
-    //  show: true // Mostrar este elemento
-   // },
+    {
+      title: 'General',
+      icon: <Settings size={18} strokeWidth={1.75} />,
+      path: '/profile',
+      show: true // Mostrar este elemento
+    },
     {
       title: 'Cuentras conectadas',
       icon: <Link2 size={18} strokeWidth={1.75} />,
