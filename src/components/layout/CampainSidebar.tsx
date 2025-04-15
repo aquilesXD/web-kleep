@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Video, BarChart2, Medal, MapPin } from "lucide-react"
+import { Video, BarChart2, Medal, MapPin, SquarePen } from "lucide-react"
 
 interface ProfileSidebarProps {
   activeItem?: "overview" | "start-here" | "rewards" | "videos" | "ads"
@@ -28,22 +28,18 @@ export function CampaignSidebar({ activeItem = "overview" }: ProfileSidebarProps
       </div>
 
       <nav className="space-y-2">
-        <Link
+      <Link
           to="/campaign"
           className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base text-white ${activeItem === "overview" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
         >
-          <img
-            src="https://img-v2-prod.whop.com/6h3sfg_FqzkV8VtmHQ41wHmNYgK6xQepCrUU9lSl0wI/rs:fill:80:80/el:1/dpr:2/aHR0cHM6Ly9hc3NldHMud2hvcC5jb20vdXBsb2Fkcy8yMDI1LTAyLTExL3VzZXJfMjE3MzE2OF85NTc2MmVhOS1kZjdhLTQ2OWItODE5YS1lZGI5NTcwZGMwYzguanBlZw"
-            alt="Brez Scales Clips logo"
-            width={30}
-            height={30}
-            className="rounded mr-3"
-          />
+          <div className="w-[30px] h-[30px] bg-blue-600  rounded flex items-center justify-center mr-3">
+            <SquarePen size={18} className="text-white" />
+          </div>
           Resumen
         </Link>
 
         <div className="pt-4 border-t border-[#2a2a2a] mt-4">
-        <Link
+            <Link
             to="/campaign-start-here"
             className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "start-here" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
             >

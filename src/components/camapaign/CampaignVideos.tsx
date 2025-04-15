@@ -1,73 +1,99 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import Sidebar from '../../components/layout/Sidebar';
 
-import { ExternalLink, AlertTriangle, X } from "lucide-react";
-import Sidebar from "../../components/layout/Sidebar";
-import { CampaignSidebar } from "../layout/CampainSidebar";
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+import { CampaignSidebar } from '../layout/CampainSidebar';
 
 interface VideoItem {
   id: string;
-  creator: string;
+  email: string;
   video_link: string;
   views: number;
   total_to_pay: number;
   status: number;
   status_note?: string;
+  creator?: string;
 }
 
-export function CampaignVideos() {
+export default function CampaignVideos() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [pendingAccounts, setPendingAccounts] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const navigate = useNavigate();
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [pendingAccounts, setPendingAccounts] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchVideos = async () => {
-      const email = localStorage.getItem("email");
-      if (!email) return;
+  const findCreatorByEmail = (email: string): string | undefined => {
+    try {
+      const accounts = JSON.parse(localStorage.getItem('connectedAccounts') || '[]');
+      const match = accounts.find((acc: any) => acc.email === email);
+      return match?.username;
+    } catch {
+      return undefined;
+    }
+  };
 
-      try {
-        const response = await fetch(`https://contabl.net/nova/get-videos-to-pay?email=${email}`);
-        const data: VideoItem[] = await response.json();
+  const extractCreatorFromLink = (link: string): string | null => {
+    const match = link?.match(/@([^/]+)\/video/);
+    return match ? match[1] : null;
+  };
 
-        setVideos(data);
+  const processData = (data: any[]) => {
+    return data.map((item) => {
+      const creatorFromEmail = findCreatorByEmail(item.email);
+      const creatorFromLink = extractCreatorFromLink(item.video_link);
+      const fallbackCreator = creatorFromEmail || creatorFromLink || '';
 
+      const status = Number(item.status);
+
+      return {
+        ...item,
+        creator: item.creator || fallbackCreator,
+        total_to_pay: parseFloat(item.total_to_pay || '0'),
+        status,
+        status_note: item.status_note || '',
+      };
+    });
+  };
+
+  const fetchVideos = async () => {
+    const email = localStorage.getItem('userEmail');
+    if (!email) return;
+
+    try {
+      const res = await fetch(`https://contabl.net/nova/get-videos-to-pay?email=${email}`);
+      const json = await res.json();
+      if (Array.isArray(json.data)) {
+        const processed = processData(json.data);
+        setVideos(processed);
+
+        // ✅ Mismo filtro que ProfileBalance
         const uniqueCreators = [
           ...new Set(
-            data
-              .filter((v: VideoItem) => v.status !== 1 && v.creator)
-              .map((v: VideoItem) => v.creator!)
+            processed
+              .filter((v) => v.status !== 1 && v.creator)
+              .map((v) => v.creator!)
           ),
         ];
-
         setPendingAccounts(uniqueCreators);
-      } catch (err) {
-        console.error("Error fetching videos:", err);
-        setError("No se pudo cargar la información de los videos.");
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error('Error al obtener los datos:', err);
+    }
+  };
 
+  useEffect(() => {
     fetchVideos();
   }, []);
 
-  const formatNumber = (num: number): string => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  };
-
-  const openModal = (video: VideoItem) => {
+  const handleShowRejectionModal = (video: VideoItem) => {
     setSelectedVideo(video);
-    setShowModal(true);
+    setShowRejectionModal(true);
   };
 
-  const closeModal = () => {
+  const handleCloseRejectionModal = () => {
+    setShowRejectionModal(false);
     setSelectedVideo(null);
-    setShowModal(false);
   };
+  
 
   return (
     <div className="min-h-screen bg-[#121212]">
@@ -75,104 +101,142 @@ export function CampaignVideos() {
       <div className="pl-20 lg:pl-24">
         <div className="flex flex-col lg:flex-row">
           <CampaignSidebar activeItem="videos" />
+          <div className="flex-1 p-4 lg:p-6 max-w-6xl mx-auto">
+            <h1 className="text-2xl font-bold text-white mb-6">MIS VIDEOS</h1>
 
-          <div className="flex-1 p-4 lg:p-6">
-            <div className="max-w-6xl mx-auto">
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-6 lg:mb-8">MIS VIDEOS</h1>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-white border border-[#222]">
+                <thead className="text-xs uppercase bg-[#111] text-gray-400">
+                  <tr>
+                    <th className="px-4 py-3">Cuenta</th>
+                    <th className="px-4 py-3">Video</th>
+                    <th className="px-4 py-3 text-right">Vistas</th>
+                    <th className="px-4 py-3 text-right">Total a pagar</th>
+                    <th className="px-4 py-3">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {videos.map((video) => {
+                    const hasSufficientViews = (video.views || 0) >= 2000;
 
-              <h2 className="text-lg lg:text-xl text-white mb-6 lg:mb-8 text-center">
-                Podcast de Tucker Carlson + Noticias // $ 4 por cada 1.000 visitas
-              </h2>
+                    let statusStyle = "";
+                    let statusIcon = null;
 
-              {loading ? (
-                <p className="text-gray-400 text-sm text-center">Cargando videos...</p>
-              ) : error ? (
-                <p className="text-red-500 text-sm text-center">{error}</p>
-              ) : (
-                <div className="border border-[#222] rounded-sm overflow-hidden mb-6 lg:mb-8">
-                  <div className="hidden lg:grid grid-cols-5 bg-[#111] border-b border-[#222] text-gray-400 text-xs uppercase">
-                    <div className="p-4">Cuentas</div>
-                    <div className="p-4">Video</div>
-                    <div className="p-4">Vistas</div>
-                    <div className="p-4">Total a pagar</div>
-                    <div className="p-4">Estado</div>
-                  </div>
+                    if (video.status === 0) {
+                    statusStyle = "border border-yellow-500 text-yellow-500";
+                    statusIcon = (
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none">
+                    <path
+                    d="M12 9v2m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    />
+                    </svg>
+                    );
+                  } else if (video.status === 1) {
+                  statusStyle = "border border-green-500 text-green-500";
+                  statusIcon = (
+                  <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none">
+                  <path
+                   d="M20 6L9 17L4 12"
+                   stroke="currentColor"
+                   strokeWidth="2"
+                   strokeLinecap="round"
+                   strokeLinejoin="round"
+                   />
+                  </svg>
+                  );
+                    } else if (video.status === 2) {
+                  statusStyle = "border border-red-500 text-red-500";
+                  statusIcon = (
+                  <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none">
+                   <path
+                   d="M18 6L6 18M6 6L18 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    />
+                   </svg>
+                    );
+                  }
 
-                  {videos.map((video) => (
-                    <div
-                      key={video.id}
-                      onClick={() => {
-                        if (video.status === 0 && video.status_note) {
-                          openModal(video);
-                        }
-                      }}
-                      className="border-b border-[#222] text-white p-4 lg:grid lg:grid-cols-5 hover:bg-[#1c1c1c] cursor-pointer transition"
-                    >
-                      <div className="text-sm mb-2 lg:mb-0">{video.creator}</div>
-                      <div className="mb-2 lg:mb-0">
-                        <a
-                          href={video.video_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 text-sm flex items-center"
-                        >
-                          Ver video <ExternalLink size={14} className="ml-1" />
-                        </a>
-                      </div>
-                      <div className="text-sm mb-2 lg:mb-0">{formatNumber(video.views)}</div>
-                      <div className="text-sm mb-2 lg:mb-0">${video.total_to_pay.toFixed(2)}</div>
-                      <div>
-                      {video.status === 1 && (
-                        <span className="inline-flex items-center bg-green-900/30 text-green-500 text-xs px-2 py-1 rounded">
-                          <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M20 6L9 17L4 12"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          Aprobado
-                        </span>
-                      )}
-                      {video.status === 0 && (
-                        <span className="inline-flex items-center bg-red-900/30 text-red-500 text-xs px-2 py-1 rounded">
-                          <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M18 6L6 18M6 6L18 18"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          Rechazado
-                        </span>
-                      )}
-                      {video.status === 2 && (
-                        <span className="inline-flex items-center bg-yellow-900/30 text-yellow-500 text-xs px-2 py-1 rounded">
-                          <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M12 9v2m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          En proceso
-                        </span>
-                      )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                 const getStatusText = (status: number): string => {
+                 switch (status) {
+                 case 0:
+                  return "En proceso";
+                  case 1:
+                   return "Aprobado";
+                  case 2:
+                  return "Rechazado";
+                  default:
+                   return "Desconocido";
+                     }
+                    };
 
-              <div className="mb-6 lg:mb-8">
-                <h3 className="text-white font-semibold text-base lg:text-lg mb-2">Verifica tus cuentas de TikTok</h3>
+                    return (
+                      <tr key={video.id} className="border-t border-[#222]">
+                        <td className="px-4 py-3">{video.creator || 'N/A'}</td>
+                        <td className="px-4 py-3">
+                          <a
+                            href={video.video_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-violet-500 flex items-center"
+                          >
+                            Ver video <ExternalLink size={14} className="ml-1" />
+                          </a>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={!hasSufficientViews ? 'text-yellow-500' : ''}>
+                            {video.views?.toLocaleString() || '0'}
+                            {!hasSufficientViews && (
+                              <span className="block text-xs">Mínimo 2000 vistas</span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <p className="text-white font-medium">
+                            {hasSufficientViews
+                              ? `$${video.total_to_pay.toFixed(2)}`
+                              : '$0.00'}
+                            {!hasSufficientViews && (
+                              <span className="block text-yellow-500 text-xs">
+                                * Pendiente de vistas
+                              </span>
+                            )}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                         {video.status === 2 ? (
+                         <button
+                         onClick={() => handleShowRejectionModal(video)}
+                         className={`px-3 py-1 rounded text-sm flex items-center ${statusStyle} hover:opacity-80 transition`}
+                          >
+                         {statusIcon} {getStatusText(video.status)}
+                         </button>
+                         ) : (
+                         <span className={`px-3 py-1 rounded text-sm flex items-center ${statusStyle}`}>
+                          {statusIcon} {getStatusText(video.status)}
+                          </span>
+                            )}
+                         </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {pendingAccounts.length > 0 && (
+              <div className="mt-10">
+                <h3 className="text-white font-semibold text-lg mb-2">
+                  Verifica tus cuentas de TikTok
+                </h3>
                 <p className="text-gray-400 text-sm mb-4">
-                  Para poder procesar los pagos, es importante que verifiquemos que tú eres el dueño de la cuenta de TikTok.
+                  Para poder procesar los pagos, es importante que verifiquemos que tú eres el dueño
+                  de la cuenta.
                 </p>
                 <div className="flex items-start mb-4">
                   <AlertTriangle size={18} className="text-yellow-500 mr-2 mt-0.5" />
@@ -180,49 +244,53 @@ export function CampaignVideos() {
                     Este paso es obligatorio para recibir pagos.
                   </p>
                 </div>
-                <div className="mb-4">
-                  <p className="text-gray-400 text-sm mb-2">Cuentas pendientes por verificar:</p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {pendingAccounts.map((account) => (
-                      <span key={account} className="text-white text-sm bg-[#222] px-2 py-1 rounded">
-                        {account}
-                      </span>
-                    ))}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {pendingAccounts.map((acc) => (
+                    <button
+                      key={acc}
+                      className="px-3 py-1 rounded-full text-sm bg-gray-800 text-white border border-gray-600 hover:bg-gray-700 transition"
+                    >
+                      @{acc}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => (window.location.href = '/profile-cuentas')}
+                  className="bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                >
+                  Verificar Cuentas de TikTok
+                </button>
+              </div>
+            )}
+
+            {showRejectionModal && selectedVideo && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div
+                  className="absolute inset-0 bg-black bg-opacity-75"
+                  onClick={handleCloseRejectionModal}
+                ></div>
+                <div className="relative bg-[#0c0c0c] rounded-lg w-11/12 max-w-md mx-auto p-5 text-white border border-[#1c1c1c]">
+                  <button
+                    onClick={handleCloseRejectionModal}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                  <div className="text-center">
+                    <h3 className="text-xl font-semibold mb-6">Tu video no ha sido aceptado</h3>
+                    <p className="text-gray-400 mb-2">MOTIVO:</p>
+                    <div className="flex mb-6 justify-center">
+                      <p className="text-sm text-red-400 whitespace-pre-line text-center">
+                        {selectedVideo.status_note || 'Sin motivo especificado.'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                {pendingAccounts.length > 0 && (
-                  <button
-                  onClick={() => navigate('/profile-cuentas')}
-                  className="w-full lg:w-auto bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-4 rounded transition-colors"
-                  >
-                  Verificar Cuentas de TikTok
-                  </button>
-                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
-
-      {showModal && selectedVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-          <div className="relative bg-[#0c0c0c] border border-[#1c1c1c] rounded-lg max-w-md w-full p-6 text-white mx-4">
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-xl font-semibold mb-4 text-center">Tu video no ha sido aceptado</h3>
-            <p className="text-gray-400 text-sm text-center mb-2">MOTIVO:</p>
-
-            <p className="text-sm text-red-400 whitespace-pre-line text-center">
-              {selectedVideo.status_note}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

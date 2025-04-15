@@ -15,7 +15,8 @@ import CampaignRewards from './components/camapaign/CampaignRewards';
 import { CampaignAds } from './components/camapaign/CampaignAds';
 import Home from './components/camapaign/Home';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
-import { CampaignVideos } from './components/camapaign/CampaignVideos';
+import CampaignVideos from './components/camapaign/CampaignVideos';
+
 
 
 function App() {

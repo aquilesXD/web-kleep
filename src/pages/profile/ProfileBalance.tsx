@@ -156,7 +156,6 @@ const ProfileBalance = () => {
         // Si no hay datos en localStorage, puedes intentar cargarlos de la API
         const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`
         const response = await fetch(apiUrl)
-
         if (!response.ok) {
           throw new Error(`Error al obtener datos: ${response.status}`)
         }
@@ -165,11 +164,12 @@ const ProfileBalance = () => {
         localStorage.setItem("apiResponse", JSON.stringify(userData))
       }
 
-      // Obtener el ID de usuario
+      // Obtener el ID de usuario usando solo el campo id_user
       let userId = ""
       if (userData?.data && Array.isArray(userData.data) && userData.data.length > 0) {
         const firstItem = userData.data[0]
-        userId = firstItem.user_id || firstItem.id_user || firstItem.id || ""
+        userId = firstItem.id_user || ""
+        console.log("🔍 Obteniendo el ID de usuario utilizando solo 'id_user':", userId)
       }
 
       if (!userId) {
@@ -182,7 +182,6 @@ const ProfileBalance = () => {
       // Hacer la petición para obtener cuentas de TikTok
       const tiktokAccountsUrl = `https://contabl.net/nova/get-tiktok-accounts-by-user?id_user=${encodeURIComponent(userId)}`
       const accountsResponse = await fetch(tiktokAccountsUrl)
-
       if (!accountsResponse.ok) {
         throw new Error(`Error al obtener cuentas: ${accountsResponse.status}`)
       }
@@ -233,19 +232,14 @@ const ProfileBalance = () => {
 
     try {
       const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`
-
       const response = await fetch(apiUrl)
-
       if (!response.ok) {
         throw new Error(`Error en la petición: ${response.status}`)
       }
 
       const data = await response.json()
-
       setApiResponseData(data)
-
       localStorage.setItem("apiResponse", JSON.stringify(data))
-
       processApiData(data, userEmail)
     } catch (error: any) {
       setError(`No se pudo conectar con el servidor: ${error.message}`)

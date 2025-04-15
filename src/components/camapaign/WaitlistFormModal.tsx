@@ -54,10 +54,8 @@ export const WaitlistFormModal: React.FC<WaitlistFormModalProps> = ({ onClose, r
         ) : success ? (
           <div className="text-center">
             <CheckCircle className="text-green-400 w-10 h-10 mx-auto mb-2" />
-            <h3 className="text-xl font-semibold mb-2">¡Solicitud enviada!</h3>
-            <p className="text-sm text-gray-400">
-              Ahora puedes comenzar a crear contenido para <span className="text-white font-medium">{reward?.title ?? 'la campaña'}</span>.
-            </p>
+            <h3 className="text-xl font-semibold mb-2">¡Te has unido a la campaña exitosamente!</h3>
+           
             <button
               onClick={onClose}
               className="mt-6 w-full bg-[#7c3aed] hover:bg-purple-700 text-white text-black font-bold py-2 px-4 rounded"
