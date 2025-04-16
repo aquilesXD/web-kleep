@@ -106,15 +106,15 @@ export default function CampaignVideos() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left text-white border border-[#222]">
-                <thead className="text-xs uppercase bg-[#111] text-gray-400">
-                  <tr>
-                    <th className="px-4 py-3">Cuenta</th>
-                    <th className="px-4 py-3">Video</th>
-                    <th className="px-4 py-3 text-right">Vistas</th>
-                    <th className="px-4 py-3 text-right">Total a pagar</th>
-                    <th className="px-4 py-3">Estado</th>
-                  </tr>
-                </thead>
+              <thead className="text-xs uppercase bg-[#111] text-gray-400">
+               <tr>
+               <th className="px-4 py-3">Cuenta</th>
+               <th className="px-4 py-3">Video</th>
+               <th className="px-4 py-3 text-right">Vistas</th>
+               <th className="px-4 py-3 text-right">Total a pagar</th>
+               <th className="px-4 py-3 text-center w-36">Estado</th>  {/* Encabezado centrado */}
+              </tr>
+              </thead>
                 <tbody>
                   {videos.map((video) => {
                     const hasSufficientViews = (video.views || 0) >= 2000;
@@ -209,18 +209,20 @@ export default function CampaignVideos() {
                           </p>
                         </td>
                         <td className="px-4 py-3">
-                         {video.status === 2 ? (
-                         <button
+                        {video.status === 2 ? (
+                        <button
                          onClick={() => handleShowRejectionModal(video)}
-                         className={`px-3 py-1 rounded text-sm flex items-center ${statusStyle} hover:opacity-80 transition`}
+                         className={`w-36 justify-center px-3 py-1 rounded text-sm flex items-center ${statusStyle} hover:opacity-80 transition`}
                           >
                          {statusIcon} {getStatusText(video.status)}
                          </button>
                          ) : (
-                         <span className={`px-3 py-1 rounded text-sm flex items-center ${statusStyle}`}>
+                         <span
+                         className={`w-36 justify-center px-3 py-1 rounded text-sm flex items-center ${statusStyle}`}
+                          >
                           {statusIcon} {getStatusText(video.status)}
                           </span>
-                            )}
+                          )}
                          </td>
                       </tr>
                     );

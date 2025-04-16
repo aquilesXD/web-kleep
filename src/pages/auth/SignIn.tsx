@@ -1,139 +1,361 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../../components/ui/Form.css';
-import { LogoIcon } from '../../components/icons';
+"use client"
 
-const SignIn: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
-  const [isValidEmail, setIsValidEmail] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
+import { User } from "lucide-react"
 
-  // Verificar si el usuario ya está autenticado
+export default function LoginForm() {
+  const navigate = useNavigate()
+  const [email, setEmail] = useState("")
+  const [isValidEmail, setIsValidEmail] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [particlesLoaded, setParticlesLoaded] = useState(false)
+  const particlesContainer = useRef<HTMLDivElement>(null)
+  const [particlesScriptLoaded, setParticlesScriptLoaded] = useState(false);
+
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    if (isAuthenticated === 'true') {
-      navigate('/profile-saldo');
+    const isAuthenticated = localStorage.getItem("isAuthenticated")
+    if (isAuthenticated === "true") {
+      navigate("/profile-saldo")
     }
-  }, [navigate]);
+     
+    if (typeof window !== "undefined" && !(window as any).particlesJS) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js';
+      script.async = true;
+      script.onload = () => {
+        setParticlesScriptLoaded(true);
+      };
+      document.body.appendChild(script);
+    } else {
+      setParticlesScriptLoaded(true);
+    }
 
-  // Función para validar formato de correo electrónico
+  }, [navigate])
+
+  useEffect(() => {
+    if (particlesScriptLoaded && typeof (window as any).particlesJS !== 'undefined') {
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        try {
+          (window as any).particlesJS("particles-js", {
+            particles: {
+              number: {
+                value: 100,
+                density: {
+                  enable: true,
+                  value_area: 800,
+                },
+              },
+              color: {
+                value: ["#8b5cf6", "#a78bfa", "#c4b5fd"],
+              },
+              shape: {
+                type: ["star", "circle", "triangle", "polygon"],
+                stroke: {
+                  width: 0,
+                  color: "#000000",
+                },
+                polygon: {
+                  nb_sides: 5,
+                },
+              },
+              opacity: {
+                value: 0.7,
+                random: true,
+                anim: {
+                  enable: true,
+                  speed: 1,
+                  opacity_min: 0.1,
+                  sync: false,
+                },
+              },
+              size: {
+                value: 4,
+                random: true,
+                anim: {
+                  enable: true,
+                  speed: 2,
+                  size_min: 0.1,
+                  sync: false,
+                },
+              },
+              line_linked: {
+                enable: true,
+                distance: 150,
+                color: "#8b5cf6",
+                opacity: 0.3,
+                width: 1,
+              },
+              move: {
+                enable: true,
+                speed: 2,
+                direction: "none",
+                random: true,
+                straight: false,
+                out_mode: "out",
+                bounce: false,
+                attract: {
+                  enable: true,
+                  rotateX: 600,
+                  rotateY: 1200,
+                },
+              },
+            },
+            interactivity: {
+              detect_on: "canvas",
+              events: {
+                onhover: {
+                  enable: true,
+                  mode: "bubble",
+                },
+                onclick: {
+                  enable: true,
+                  mode: "push",
+                },
+                resize: true,
+              },
+              modes: {
+                grab: {
+                  distance: 140,
+                  line_linked: {
+                    opacity: 1,
+                  },
+                },
+                bubble: {
+                  distance: 200,
+                  size: 6,
+                  duration: 2,
+                  opacity: 0.8,
+                  speed: 3,
+                },
+                repulse: {
+                  distance: 200,
+                  duration: 0.4,
+                },
+                push: {
+                  particles_nb: 4,
+                },
+                remove: {
+                  particles_nb: 2,
+                },
+              },
+            },
+            retina_detect: true,
+          });
+        } catch (error) {
+        }
+      }, 100);
+    }
+  }, [particlesScriptLoaded]);
+
   const validateEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return regex.test(email)
+  }
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setEmail(value);
-    setIsValidEmail(validateEmail(value));
-    setError(null);
-  };
+    const value = e.target.value
+    setEmail(value)
+    setIsValidEmail(validateEmail(value))
+    setError(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-  
+    e.preventDefault()
+
     if (!isValidEmail) {
-      setError('Por favor ingrese un correo electrónico válido');
-      return;
+      setError("Por favor ingresa un correo electrónico válido")
+      return
     }
-  
-    setIsLoading(true);
-    setError(null);
-  
+
+    setIsLoading(true)
+    setError(null)
+
     try {
-      const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(email)}`;
-      const response = await fetch(apiUrl);
-  
+      const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(email)}`
+      const response = await fetch(apiUrl)
+
       if (!response.ok) {
-        throw new Error(`Error en la petición: ${response.status}`);
+        throw new Error(`Error en la petición: ${response.status}`)
       }
-  
-      const responseData = await response.json();
-  
+
+      const responseData = await response.json()
+
       if (responseData?.data?.length > 0) {
-        // Guardar en localStorage
-        localStorage.setItem('userEmail', email);
-        localStorage.setItem('apiResponse', JSON.stringify(responseData));
-        localStorage.setItem('isRegistering', 'false');
-  
-        // Extraer userId
+        localStorage.setItem("userEmail", email)
+        localStorage.setItem("apiResponse", JSON.stringify(responseData))
+        localStorage.setItem("isRegistering", "false")
+
         const extractUserId = (data: any): string => {
-          const user = data.data[0];
-          return user.user_id || user.id_user || user.id || '';
-        };
-        const userId = extractUserId(responseData);
-  
-        if (!userId) throw new Error("No se pudo obtener el ID de usuario.");
-  
-        // Enviar código al correo
-        const { sendVerificationCode } = await import('../../services/authService');
-        await sendVerificationCode(userId, email);
+          const user = data.data[0]
+          return user.user_id || user.id_user || user.id || ""
+        }
+        const userId = extractUserId(responseData)
 
-// Esperar que el backend actualice
-await new Promise((res) => setTimeout(res, 3000));
+        if (!userId) throw new Error("No se pudo obtener el ID de usuario.")
 
-// Hacer nuevo GET para obtener el nuevo código actualizado
-const refreshedResponse = await fetch(apiUrl);
-const refreshedData = await refreshedResponse.json();
+        const { sendVerificationCode } = await import("../../services/authService")
+        await sendVerificationCode(userId, email)
 
-// Guardar el nuevo apiResponse con el código actualizado
-localStorage.setItem('apiResponse', JSON.stringify(refreshedData));
+        await new Promise((res) => setTimeout(res, 3000))
 
-navigate('/verify-code');
+        const refreshedResponse = await fetch(apiUrl)
+        const refreshedData = await refreshedResponse.json()
+        localStorage.setItem("apiResponse", JSON.stringify(refreshedData))
+
+        navigate("/verify-code")
       } else {
-        setError('Correo electrónico no encontrado en el sistema.');
+        setError("Correo electrónico no encontrado en el sistema.")
       }
     } catch (error: any) {
-      setError(`Error al iniciar sesión: ${error.message}`);
+      setError(`Error al iniciar sesión: ${error.message}`)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
+
+  useEffect(() => {
+    const script = document.createElement("script")
+    script.src = "https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"
+    script.async = true
+    document.body.appendChild(script)
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
 
   return (
-    <div className="min-h-screen bg-[#0c0c0c] flex items-center justify-center p-4">
-      <div className="flex flex-col items-center justify-center max-w-5xl w-full">
-        {/* Se ha eliminado el Logo Mini a un costado */}
+    <div className="relative w-full h-screen flex justify-center items-center overflow-hidden bg-[#0c0c0c]">
+      <div id="particles-js" ref={particlesContainer} className="absolute inset-0 z-0">
+        {particlesLoaded && <ParticlesBackground containerRef={particlesContainer} />}
+      </div>
 
-        {/* Formulario de inicio de sesión */}
-        <div className="login-container card w-full" style={{ maxWidth: '450px', borderRadius: '8px' }}>
-          {/* Logo */}
-          <div className="logo mt-4 text-center">
-            <LogoIcon width={40} height={40} className="mx-auto" />
-          </div>
+      <div className="relative z-10 bg-[rgba(25,25,25,0.85)] backdrop-blur-md rounded-xl w-[90%] max-w-[450px] p-8 md:p-10 shadow-lg border border-[rgba(51,51,51,0.2)] overflow-hidden animate-fadeIn">
+        <div className="absolute top-0 left-0 w-full h-[5px] bg-gradient-to-r from-[#8b5cf6] to-[#c084fc]"></div>
 
-          <h2 className="text-white w-100 mt-1 text-center text-2xl sm:text-3xl font-bold">
-            Iniciar sesión
-          </h2>
+        <div className="text-center mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mt-2">
+            <span className="bg-gradient-to-r from-[#8b5cf6] to-[#c084fc] bg-clip-text text-transparent">K</span>
+          </h1>
+          <h2 className="text-white mt-4 text-xl sm:text-2xl font-bold">Iniciar sesión</h2>
+        </div>
 
-          <form className="mt-6 px-4 sm:px-6" onSubmit={handleSubmit}>
-            <div className="mb-4">
+        <form onSubmit={handleSubmit}>
+          <div className="mb-5 relative">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <User size={18} />
+              </span>
               <input
-                className={`form-control w-full p-2 sm:p-3 bg-[#191919] border ${error ? 'border-red-500' : 'border-[#333]'} text-white text-sm sm:text-base`}
-                id="email"
-                placeholder="Tu correo"
                 type="email"
+                id="email"
+                name="email"
                 value={email}
                 onChange={handleEmailChange}
+                placeholder="Tu correo"
+                className={`w-full py-3 pl-11 pr-3 bg-[#191919] text-white rounded-lg border ${
+                  error ? "border-red-500" : "border-[#333]"
+                } focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:ring-opacity-50 transition-all text-sm sm:text-base`}
                 disabled={isLoading}
                 autoComplete="email"
+                required
               />
-              {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
             </div>
-            <button
-              className={`w-full mt-2 bg-[#7c3aed] text-white font-medium py-2 sm:py-3 px-4 text-sm sm:text-base ${!isValidEmail || isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#6d28d9]'}`}
-              type="submit"
-              disabled={!isValidEmail || isLoading}
-            >
-              {isLoading ? 'Cargando...' : 'Continuar'}
-            </button>
-          </form>
-        </div>
+            {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+          </div>
+
+          <button
+            type="submit"
+            className={`w-full py-3 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg font-medium transition-all hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 relative overflow-hidden text-sm sm:text-base ${
+              !isValidEmail || isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={!isValidEmail || isLoading}
+          >
+            {isLoading ? "Cargando..." : "Continuar"}
+          </button>
+        </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SignIn;
+function ParticlesBackground({ containerRef }: { containerRef: React.RefObject<HTMLDivElement> }) {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if ((window as any).particlesJS && containerRef.current) {
+        (window as any).particlesJS("particles-js", {
+          particles: {
+            number: {
+              value: 100,
+              density: { enable: true, value_area: 800 },
+            },
+            color: { value: ["#8b5cf6", "#a78bfa", "#c4b5fd"] },
+            shape: {
+              type: ["star", "circle", "triangle", "polygon"],
+              stroke: { width: 0, color: "#000000" },
+              polygon: { nb_sides: 5 },
+            },
+            opacity: {
+              value: 0.7,
+              random: true,
+              anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false },
+            },
+            size: {
+              value: 4,
+              random: true,
+              anim: { enable: true, speed: 2, size_min: 0.1, sync: false },
+            },
+            line_linked: {
+              enable: true,
+              distance: 150,
+              color: "#8b5cf6",
+              opacity: 0.3,
+              width: 1,
+            },
+            move: {
+              enable: true,
+              speed: 2,
+              direction: "none",
+              random: true,
+              straight: false,
+              out_mode: "out",
+              bounce: false,
+              attract: { enable: true, rotateX: 600, rotateY: 1200 },
+            },
+          },
+          interactivity: {
+            detect_on: "canvas",
+            events: {
+              onhover: { enable: true, mode: "bubble" },
+              onclick: { enable: true, mode: "push" },
+              resize: true,
+            },
+            modes: {
+              grab: { distance: 140, line_linked: { opacity: 1 } },
+              bubble: {
+                distance: 200,
+                size: 6,
+                duration: 2,
+                opacity: 0.8,
+                speed: 3,
+              },
+              repulse: { distance: 200, duration: 0.4 },
+              push: { particles_nb: 4 },
+              remove: { particles_nb: 2 },
+            },
+          },
+          retina_detect: true,
+        });
+        clearInterval(interval); // solo una vez
+      }
+    }, 100); // chequea cada 100ms
+
+    return () => clearInterval(interval);
+  }, [containerRef]);
+
+  return null;
+}
