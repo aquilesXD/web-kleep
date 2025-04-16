@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { WaitlistFormModal } from './WaitlistFormModal';
+import { useNavigate } from 'react-router-dom';
 
 interface WhopCreatorsModalProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ interface WhopCreatorsModalProps {
 const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }) => {
   const [showJoinModal, setShowJoinModal] = React.useState(false);
   const imageUrl = reward?.image ?? 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80';
+  const navigate = useNavigate();
 
   return (
     <>
@@ -37,8 +39,8 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
               className="w-full h-full object-cover"
             />
           </div>
-          
-            <h2 className="text-2xl font-bold mb-4 text-center">{reward?.title ?? 'Whop Creators'}</h2>
+
+          <h2 className="text-2xl font-bold mb-4 text-center">{reward?.title ?? 'Whop Creators'}</h2>
 
           <p className="text-base mb-2">
             Gana <span className="text-green-400 font-semibold">{reward?.rate ?? '$3,500'}</span> por cada 1,000,000 de vistas en videos Whop UGC!
@@ -66,10 +68,14 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
           >
             Únete a
           </button>
-            <button
-            onClick={() => (window.location.href = '/campaign')}
+
+          <button
+            onClick={() => {
+              localStorage.removeItem("isAuthenticated");
+              navigate("/campaign");
+            }}
             className="w-full text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 hover:text-purple-500"
-            >
+          >
             Llévame a la página de la tienda
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -80,12 +86,12 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
               className="w-5 h-5"
             >
               <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13.5 4.5l6 6m0 0l-6 6m6-6H3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13.5 4.5l6 6m0 0l-6 6m6-6H3"
               />
             </svg>
-            </button>
+          </button>
         </div>
       </div>
 

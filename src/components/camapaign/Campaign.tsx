@@ -1,10 +1,4 @@
 import { useState } from "react";
-
-
-
-
-
-
 import Sidebar from "../../components/layout/Sidebar";
 import { CampaignSidebar } from "../layout/CampainSidebar";
 import { Testimonial } from "./Testimonial";
@@ -14,6 +8,7 @@ import { CheckCircle } from "lucide-react";
 
 export default function Campaign() {
   const [message, setMessage] = useState("")
+  
 
   return (
     <div className="min-h-screen bg-[#121212]">

@@ -5,6 +5,7 @@ import ProfileSecurity from './pages/profile/ProfileSecurity';
 import ProfilePaymentMethods from './pages/profile/ProfilePaymentMethods';
 import ProfileBalance from './pages/profile/ProfileBalance';
 import Layout from './components/layout/Layout';
+import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import VerifyCode from './pages/auth/VerifyCode';
 import { Toaster } from 'react-hot-toast';
@@ -15,14 +16,11 @@ import { CampaignAds } from './components/camapaign/CampaignAds';
 import Home from './components/camapaign/Home';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import CampaignVideos from './components/camapaign/CampaignVideos';
-import SignIn from './pages/auth/SignIn';
-
 
 function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#0c0c0c]">
-        {/* 🔥 Toast container global */}
         <Toaster
           position="top-center"
           toastOptions={{
@@ -38,35 +36,36 @@ function App() {
         />
 
         <Routes>
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/signin" replace />} />
+
           {/* Auth Routes */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/verify-code" element={<VerifyCode />} />
-          
 
-          {/* Campaing Routes*/}
-        <Route path="/" element={<Campaign />} />
-        <Route path="/campaign" element={<Campaign />} />
-        <Route path="/campaign-start-here" element={<CampaignStartHere />} />
-        <Route path="/campaign-rewards" element={<CampaignRewards />} />
-        <Route path="/campaign-ads" element={<CampaignAds />} />
-        <Route path="/campaign-home" element={<Home />} />
-        <Route path="/campaign-videos" element={<CampaignVideos />} />
-
-          {/* Default Route - Redirect to SignIn */}
-          <Route path="/" element={<Navigate to="/signin" replace />} />
+          {/* Campaign Routes */}
+          <Route path="/campaign" element={<Campaign />} />
+          <Route path="/campaign-start-here" element={<CampaignStartHere />} />
+          <Route path="/campaign-rewards" element={<CampaignRewards />} />
+          <Route path="/campaign-ads" element={<CampaignAds />} />
+          <Route path="/campaign-home" element={<Home />} />
+          <Route path="/campaign-videos" element={<CampaignVideos />} />
 
           {/* Notifications Route */}
-        <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes with Layout */}
           <Route path="/" element={<Layout />}>
-            <Route path="/profile" element={<ProfileGeneral />} />
-            <Route path="/profile-cuentas" element={<ProfileConnectedAccounts />} />
-            <Route path="/profile-seguridad" element={<ProfileSecurity />} />
-            <Route path="/profile-formas-de-pago" element={<ProfilePaymentMethods />} />
-            <Route path="/profile-saldo" element={<ProfileBalance />} />
+            <Route path="profile" element={<ProfileGeneral />} />
+            <Route path="profile-cuentas" element={<ProfileConnectedAccounts />} />
+            <Route path="profile-seguridad" element={<ProfileSecurity />} />
+            <Route path="profile-formas-de-pago" element={<ProfilePaymentMethods />} />
+            <Route path="profile-saldo" element={<ProfileBalance />} />
           </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/signin" replace />} />
         </Routes>
       </div>
     </Router>
