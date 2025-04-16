@@ -71,7 +71,7 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
 
           <button
             onClick={() => {
-              localStorage.removeItem("isAuthenticated");
+              // Simplemente navegar a la página de campaña sin eliminar la autenticación
               navigate("/campaign");
             }}
             className="w-full text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 hover:text-purple-500"

@@ -1,12 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import Sidebar from "../../components/layout/Sidebar";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { RewardCard } from "./RewardCard";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
+  const navigate = useNavigate()
+
+  // Verificar autenticación al cargar el componente
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated")
+    const userEmail = localStorage.getItem("userEmail")
+
+    // Verificar que tanto isAuthenticated como userEmail existan
+    if (!isAuthenticated || !userEmail) {
+      // Limpiar cualquier dato de sesión parcial
+      localStorage.removeItem("isAuthenticated")
+      localStorage.removeItem("userEmail")
+      localStorage.removeItem("apiResponse")
+
+      // Redirigir al inicio de sesión
+      navigate("/signin")
+    }
+  }, [navigate])
 
   // Sample reward data
   const rewards = [
@@ -135,7 +154,7 @@ export default function Home() {
       <Sidebar />
 
       <div className="card bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-        
+
 
         <div className="card-body p-5">
           <h1 className="text-2xl font-bold text-white mb-1">💵 Recompensas por contenido</h1>
@@ -143,7 +162,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-      
+
             </div>
 
             <div className="text-right">
@@ -206,4 +225,3 @@ export default function Home() {
     </div>
   )
 }
-

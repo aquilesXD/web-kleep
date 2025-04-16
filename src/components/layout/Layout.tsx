@@ -5,8 +5,6 @@ import { Menu, X } from 'lucide-react';
 import LogoKleep from '../icons/LogoKleep';
 import Sidebar from './Sidebar';
 
-
-
 const Layout = () => {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const navigate = useNavigate();
@@ -14,7 +12,16 @@ const Layout = () => {
   useEffect(() => {
     // Verificar si el usuario está autenticado
     const isAuthenticated = localStorage.getItem('isAuthenticated');
-    if (!isAuthenticated) {
+    const userEmail = localStorage.getItem('userEmail');
+
+    // Verificar que tanto isAuthenticated como userEmail existan
+    if (!isAuthenticated || !userEmail) {
+      // Limpiar cualquier dato de sesión parcial
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('apiResponse');
+
+      // Redirigir al inicio de sesión
       navigate('/signin');
     }
   }, [navigate]);
@@ -48,7 +55,7 @@ const Layout = () => {
               </button>
             </div>
             <div className="mt-4">
-            <ProfileSidebar mobile={true} onCloseMobileMenu={() => setShowMobileSidebar(false)} />
+              <ProfileSidebar mobile={true} onCloseMobileMenu={() => setShowMobileSidebar(false)} />
             </div>
           </div>
         </div>
@@ -58,17 +65,16 @@ const Layout = () => {
         <div className="flex flex-col lg:flex-row h-full md:h-[calc(100vh-48px)] rounded-xl overflow-hidden border border-[#1c1c1c]">
           {/* Left sidebar - Hidden on mobile */}
           <div className="hidden lg:block w-64 border-r border-[#1c1c1c]">
-          <Sidebar />
+            <Sidebar />
             <ProfileSidebar />
           </div>
 
           {/* Main content */}
           <div className="flex-1 flex flex-col">
             <div className="px-4 md:px-6 py-3 border-b border-[#1c1c1c] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-            <LogoKleep />
-            
-            </div>
+              <div className="flex items-center gap-2">
+                <LogoKleep />
+              </div>
             </div>
 
             <div className="flex-1 overflow-auto">
@@ -76,18 +82,18 @@ const Layout = () => {
             </div>
 
             <div className="mt-6 px-4 md:px-6 pb-6 text-sm text-center text-gray-400">
-             <p>
-              <strong>¿Tienes dudas o necesitas ayuda? Escríbenos por WhatsApp:</strong>
+              <p>
+                <strong>¿Tienes dudas o necesitas ayuda? Escríbenos por WhatsApp:</strong>
               </p>
               <a
-             href="https://wa.me/15757284361"
-             target="_blank"
-             rel="noopener noreferrer"
-           className="text-green-400 hover:underline"
-            >
-            +1 (575) 728-4361
-            </a>
-           </div>
+                href="https://wa.me/15757284361"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 hover:underline"
+              >
+                +1 (575) 728-4361
+              </a>
+            </div>
           </div>
         </div>
       </div>
