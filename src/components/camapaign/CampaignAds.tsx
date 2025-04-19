@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Heart, MessageSquare, Share2 } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
 
 import { CampaignSidebar } from "../layout/CampainSidebar";
 import Sidebar from "../layout/Sidebar";
@@ -207,12 +207,12 @@ const AnnouncementContent = () => {
                 <svg width="18" height="18" viewBox="0 0 24 24" className="mr-2">
                   <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
                 </svg>
-                <span className="text-sm">React</span>
+                <span className="text-sm">Reaccionar</span>
               </button>
 
               <button className="flex-1 flex items-center justify-center py-2 text-gray-400 hover:bg-[#191919] rounded-md transition-colors">
                 <MessageSquare size={18} className="mr-2" />
-                <span className="text-sm">Comment</span>
+                <span className="text-sm">Comentario</span>
               </button>
 
               <button className="flex-1 flex items-center justify-center py-2 text-gray-400 hover:bg-[#191919] rounded-md transition-colors">
@@ -223,7 +223,7 @@ const AnnouncementContent = () => {
                   <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
                   <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                 </svg>
-                <span className="text-sm">Share</span>
+                <span className="text-sm">Compartir</span>
               </button>
             </div>
           </div>
@@ -298,12 +298,12 @@ const AnnouncementContent = () => {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
                           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
                         </svg>
-                        <span className="text-[10px]">React</span>
+                        <span className="text-[10px]">Reaccionar</span>
                       </button>
 
                       <button className="flex items-center text-gray-500">
                         <MessageSquare size={12} className="mr-1" />
-                        <span className="text-[10px]">Reply</span>
+                        <span className="text-[10px]">Responder</span>
                       </button>
                     </div>
                   </div>
@@ -318,6 +318,25 @@ const AnnouncementContent = () => {
 };
 
 export function CampaignAds() {
+  const navigate = useNavigate();
+
+  // Verificar autenticación al cargar el componente
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated");
+    const userEmail = localStorage.getItem("userEmail");
+
+    // Verificar que tanto isAuthenticated como userEmail existan
+    if (!isAuthenticated || !userEmail) {
+      // Limpiar cualquier dato de sesión parcial
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("apiResponse");
+
+      // Redirigir al inicio de sesión
+      navigate("/signin");
+    }
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-[#0c0c0c]">
       <Sidebar />

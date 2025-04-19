@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/layout/Sidebar";
 import { CampaignSidebar } from "../layout/CampainSidebar";
 import { Testimonial } from "./Testimonial";
@@ -8,7 +9,24 @@ import { CheckCircle } from "lucide-react";
 
 export default function Campaign() {
   const [message, setMessage] = useState("")
-  
+  const navigate = useNavigate()
+
+  // Verificar autenticación al cargar el componente
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated")
+    const userEmail = localStorage.getItem("userEmail")
+
+    // Verificar que tanto isAuthenticated como userEmail existan
+    if (!isAuthenticated || !userEmail) {
+      // Limpiar cualquier dato de sesión parcial
+      localStorage.removeItem("isAuthenticated")
+      localStorage.removeItem("userEmail")
+      localStorage.removeItem("apiResponse")
+
+      // Redirigir al inicio de sesión
+      navigate("/signin")
+    }
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-[#121212]">
@@ -45,7 +63,7 @@ export default function Campaign() {
                   <p className="mt-3 text-base text-gray-400">
                   Únase a nuestro equipo y reciba pagos por grabar videos desde cualquier lugar.
                   </p>
-                  <button className="w-full mt-4 text-base py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                  <button className="w-full mt-4 text-base py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-md hidden">
                     Unete a
                   </button>
 
@@ -99,7 +117,7 @@ export default function Campaign() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FeatureCard
                     icon="https://img-v2-prod.whop.com/X6k_ozpYUY84nlanH6CyRTIRRP3VFwbJ0w593iHJm1o/rs:fill:80:80/el:1/dpr:2/aHR0cHM6Ly9hc3NldHMud2hvcC5jb20vdXBsb2Fkcy8yMDI1LTAzLTA2L3VzZXJfMjE3MzE2OF8wZjZiNjBkOS0zYTNiLTRjNjMtOTAxMS1lN2ZmMTE5ZGY5Y2IucG5n"
-                    title="START HERE"
+                    title="Comience Aqui"
                     description="Accede a contenido experto que te mantendrá informado."
                   />
                   <FeatureCard
@@ -144,25 +162,12 @@ export default function Campaign() {
                     </div>
                     <h3 className="text-2xl font-bold text-white">Rezz</h3>
                     <p className="text-gray-400">@rezzashahabzadeh • Se unió en enero de 2024</p>
-                    <button className="mt-4 text-lg bg-[#2a2a2a] hover:bg-[#333] text-white py-2 px-4 rounded-md">
+                    {/* <button className="mt-4 text-lg bg-[#2a2a2a] hover:bg-[#333] text-white py-2 px-4 rounded-md">
                       Ver Perfil
-                    </button>
+                    </button> */}
 
                     <div className="mt-6 relative">
-                      <textarea
-                        className="w-full bg-[#121212] border border-[#313131] rounded-lg p-4 h-24 resize-none text-white"
-                        placeholder="Escribe un mensaje..."
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                      />
-                      <button className="absolute right-4 top-10 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full">
-                        <span className="sr-only">enviar mensaje</span>
-                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 5l0 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M18 11l-6 -6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M6 11l6 -6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </button>
+                      {/* Textarea and button hidden */}
                     </div>
                   </div>
                 </div>
@@ -204,11 +209,11 @@ export default function Campaign() {
                         height={60}
                         className="rounded-xl mx-auto"
                       />
-                      <h3 className="text-2xl font-bold mt-4 text-white">Join Brez Scales Clips</h3>
+                      <h3 className="text-2xl font-bold mt-4 text-white">Únase a los clips de escalas Brez</h3>
                       <p className="text-lg font-semibold mt-2 text-white"> Gratis de por vida</p>
-                      <button className="w-4/5 py-6 text-lg mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                      {/* <button className="w-4/5 py-6 text-lg mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
                         Unete a
-                      </button>
+                      </button> */}
 
                       <div className="mt-6 bg-[#121212] rounded-lg">
                         <ul className="divide-y divide-[#2a2a2a] text-left">
@@ -260,4 +265,3 @@ export default function Campaign() {
     </div>
   )
 }
-

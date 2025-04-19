@@ -33,7 +33,7 @@ export const WaitlistFormModal: React.FC<WaitlistFormModalProps> = ({ onClose, r
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          className="absolute top-0 right-0 text-gray-400 hover:text-white"
         >
           <X size={20} />
         </button>
@@ -55,19 +55,8 @@ export const WaitlistFormModal: React.FC<WaitlistFormModalProps> = ({ onClose, r
           <div className="text-center">
             <CheckCircle className="text-green-400 w-10 h-10 mx-auto mb-2" />
             <h3 className="text-xl font-semibold mb-2">¡Te has unido a la campaña exitosamente!</h3>
-           
-            <button
-              onClick={onClose}
-              className="mt-6 w-full bg-[#7c3aed] hover:bg-purple-700 text-white text-black font-bold py-2 px-4 rounded"
-            >
-              Entendido
-            </button>
           </div>
         ) : null}
-
-        <p className="mt-6 text-xs text-gray-600 text-center">
-          Al continuar, aceptas nuestros <a href="#" className="underline">Términos</a> y <a href="#" className="underline">Privacidad</a>.
-        </p>
       </div>
     </div>
   );

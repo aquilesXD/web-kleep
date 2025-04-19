@@ -131,23 +131,20 @@ export default function Home() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#121212] px-4 pb-8 pl-20 lg:pl-24">
+    <div className="min-h-screen bg-[#121212] p-4 lg:p-8 pl-20 lg:pl-24">
       <Sidebar />
 
-      <div className="card bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-        
+      <div className="card bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] p-2 sm:p-6 md:p-2">
+        <div className="card-body p-2">
+          <h1 className="text-2xl font-bold text-white mb-2">💵 Recompensas por contenido</h1>
+          <p className="text-sm text-gray-500 mb-6">Publica contenidos en las redes sociales y cobra por las visitas que generes!</p>
 
-        <div className="card-body p-5">
-          <h1 className="text-2xl font-bold text-white mb-1">💵 Recompensas por contenido</h1>
-          <p className="text-sm text-gray-500 text-sm mb-6">Publica contenidos en las redes sociales y cobra por las visitas que generes!</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-      
             </div>
 
             <div className="text-right">
-              <div className="inline-flex rounded-md shadow-sm">
+              <div className="inline-flex rounded-md shadow-sm gap-2">
                 <button className="bg-[#1c1c1c] hover:bg-orange-600 text-white px-4 py-2 rounded-md">
                   Mas pagados
                 </button>
@@ -159,23 +156,23 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="text-right mb-4">
+          <div className="text-right mb-6">
             <p className="text-sm text-gray-300">147 Resultados</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {rewards.map((reward) => (
               <RewardCard key={reward.id} reward={reward} />
             ))}
           </div>
 
-          <div className="flex justify-center mt-10">
+          <div className="flex justify-center">
             <nav className="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
               <button
-                className="bg-[#1c1c1c] text-gray-400 hover:bg-[#252525] relative inline-flex items-center px-2 py-2 rounded-l-md border border-[#2a2a2a] disabled:opacity-50"
+                className="bg-[#1c1c1c] text-gray-400 hover:bg-[#252525] relative inline-flex items-center px-3 py-2 rounded-l-md border border-[#2a2a2a] disabled:opacity-50"
                 disabled
               >
-                <span className="sr-only">Previous</span>
+                <span className="sr-only">Previa</span>
                 <ChevronLeft className="h-5 w-5" />
               </button>
 
@@ -195,8 +192,8 @@ export default function Home() {
                 5
               </button>
 
-              <button className="bg-[#1c1c1c] text-gray-300 hover:bg-[#252525] relative inline-flex items-center px-2 py-2 rounded-r-md border border-[#2a2a2a]">
-                <span className="sr-only">Next</span>
+              <button className="bg-[#1c1c1c] text-gray-300 hover:bg-[#252525] relative inline-flex items-center px-3 py-2 rounded-r-md border border-[#2a2a2a]">
+                <span className="sr-only">Próxima</span>
                 <ChevronRight className="h-5 w-5" />
               </button>
             </nav>

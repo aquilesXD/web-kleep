@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 
 import { AlertTriangle, ExternalLink } from 'lucide-react';
@@ -16,10 +17,28 @@ interface VideoItem {
 }
 
 export default function CampaignVideos() {
+  const navigate = useNavigate();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [pendingAccounts, setPendingAccounts] = useState<string[]>([]);
+
+  // Verificar autenticación al cargar el componente
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated");
+    const userEmail = localStorage.getItem("userEmail");
+
+    // Verificar que tanto isAuthenticated como userEmail existan
+    if (!isAuthenticated || !userEmail) {
+      // Limpiar cualquier dato de sesión parcial
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("apiResponse");
+
+      // Redirigir al inicio de sesión
+      navigate("/signin");
+    }
+  }, [navigate]);
 
   const findCreatorByEmail = (email: string): string | undefined => {
     try {
@@ -76,7 +95,6 @@ export default function CampaignVideos() {
         setPendingAccounts(uniqueCreators);
       }
     } catch (err) {
-      console.error('Error al obtener los datos:', err);
     }
   };
 
@@ -93,7 +111,7 @@ export default function CampaignVideos() {
     setShowRejectionModal(false);
     setSelectedVideo(null);
   };
-  
+
 
   return (
     <div className="min-h-screen bg-[#121212]">
@@ -257,7 +275,7 @@ export default function CampaignVideos() {
                   ))}
                 </div>
                 <button
-                  onClick={() => (window.location.href = '/profile-cuentas')}
+                  onClick={() => navigate('/profile-cuentas')}
                   className="bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-4 rounded transition-colors"
                 >
                   Verificar Cuentas de TikTok

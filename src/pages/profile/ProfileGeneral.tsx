@@ -22,7 +22,7 @@ const ProfileGeneral = () => {
 
       <div className="mb-4">
         <label className="block text-sm text-gray-400 mb-1.5">
-          Bio
+          Biografia
         </label>
         <textarea
           className="w-full p-2.5 bg-[#101010] border border-[#1c1c1c] rounded-md text-white h-[80px] sm:h-[100px] focus:outline-none focus:border-[#272727]"

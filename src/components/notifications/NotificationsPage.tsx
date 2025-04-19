@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Cog, MessageSquare, Heart, Share2, User, Bell, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
@@ -20,14 +20,14 @@ interface Notification {
   date: 'today' | 'yesterday' | 'older';
 }
 
-// Función auxiliar para crear una fecha relativa
+// Función auxiliar para crear una fecha relativa (movida fuera del componente)
 const getRelativeTimeString = (date: Date): string => {
   const now = new Date();
   const hours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
   if (hours < 1) return "Ahora";
-  if (hours < 24) return `Today, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
-  if (hours < 48) return `Yesterday, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
+  if (hours < 24) return `Hoy, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
+  if (hours < 48) return `Ayer, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
 
   return `${date.toLocaleDateString()}, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
 };
@@ -41,7 +41,7 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone giving $5 at the end of the day to the most helpful person. -you can help others out, -guide them -give advice -calling out scammers And etc etc etc',
+    content: '@everyone dando $5 al final del día a la persona más útil. -puedes ayudar a otros, -guiarlos -dar consejos -señalar estafadores y etc etc etc',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 2, 29)),
     date: 'today',
     read: false,
@@ -53,7 +53,7 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone giving $5 at the end of the day to the most helpful person. -you can help others out, -guide them -give advice -calling out scammers And etc etc etc',
+    content: '@everyone dando $5 al final del día a la persona más útil. -puedes ayudar a otros, -guiarlos -dar consejos -señalar estafadores y etc etc etc',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 3, 44)),
     date: 'today',
     read: false,
@@ -65,8 +65,8 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone if anyone wants to join our paid community.. Here\'s some other things that were going to be offering: - Exclusive deals - 1-1 calls with Maxim - Everything from how to start the account a',
-    fullContent: '@everyone if anyone wants to join our paid community.. Here\'s some other things that were going to be offering: - Exclusive deals - 1-1 calls with Maxim - Everything from how to start the account and more',
+    content: '@everyone si alguien quiere unirse a nuestra comunidad de pago... Aquí hay otras cosas que vamos a ofrecer: - Ofertas exclusivas - Llamadas 1-1 con Maxim - Todo sobre cómo comenzar la cuenta y',
+    fullContent: '@everyone si alguien quiere unirse a nuestra comunidad de pago... Aquí hay otras cosas que vamos a ofrecer: - Ofertas exclusivas - Llamadas 1-1 con Maxim - Todo sobre cómo comenzar la cuenta y más',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 4, 36)),
     date: 'today',
     read: false,
@@ -78,7 +78,7 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone giving $5 at the end of the day to the most helpful person. -you can help others out, -guide them -give advice And etc etc etc',
+    content: '@everyone dando $5 al final del día a la persona más útil. -puedes ayudar a otros, -guiarlos -dar consejos y etc etc etc',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 5, 24)),
     date: 'today',
     read: false,
@@ -90,7 +90,7 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone giving $5 at the end of the day to the most helpful person. -you can help others out, -guide them -give advice And etc etc etc',
+    content: '@everyone dando $5 al final del día a la persona más útil. -puedes ayudar a otros, -guiarlos -dar consejos y etc etc etc',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 6, 18)),
     date: 'today',
     read: false,
@@ -102,7 +102,7 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: 'Yo @everyone who would want a giveaway for most helpful person of the week/month? Like yall helping others and calling out scammers etc',
+    content: 'Oye @everyone ¿quién querría un sorteo para la persona más útil de la semana/mes? Como ayudar a otros y señalar estafadores etc',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 12, 10)),
     date: 'today',
     read: false,
@@ -114,8 +114,8 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone we had an amazing call in our paid whop, and this is just the start of what we have in store🔥 If you still haven\'t joined.. Here\'s some other things that were going to be offering: - Exclu',
-    fullContent: '@everyone we had an amazing call in our paid whop, and this is just the start of what we have in store🔥 If you still haven\'t joined.. Here\'s some other things that were going to be offering: - Exclusive deals and more',
+    content: '@everyone tuvimos una llamada increíble en nuestro whop de pago, ¡y esto es solo el comienzo de lo que tenemos preparado! 🔥 Si aún no te has unido... Aquí hay otras cosas que vamos a ofrecer: - Exclu',
+    fullContent: '@everyone tuvimos una llamada increíble en nuestro whop de pago, ¡y esto es solo el comienzo de lo que tenemos preparado! 🔥 Si aún no te has unido... Aquí hay otras cosas que vamos a ofrecer: - Ofertas exclusivas y más',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 14, 38)),
     date: 'today',
     read: false,
@@ -127,7 +127,7 @@ const sampleNotifications: Notification[] = [
       name: 'eric',
       avatar: 'https://i.pravatar.cc/100?u=eric1',
     },
-    content: '@everyone who is cooking on whop rn? want to reward some of the grinders 🤑',
+    content: '@everyone ¿quién está trabajando en whop ahora? quiero recompensar a algunos de los más trabajadores 🤑',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 34, 23)),
     date: 'yesterday',
     read: false,
@@ -139,8 +139,8 @@ const sampleNotifications: Notification[] = [
       name: 'Azan',
       avatar: 'https://i.pravatar.cc/100?u=azan1',
     },
-    content: '@everyone we had an amazing call in our paid whop, and this is just the start of what we have in store🔥 If you still haven\'t joined.. Here\'s some other things that were going to be offering: - Exclu',
-    fullContent: '@everyone we had an amazing call in our paid whop, and this is just the start of what we have in store🔥 If you still haven\'t joined.. Here\'s some other things that were going to be offering: - Exclusive deals and more',
+    content: '@everyone tuvimos una llamada increíble en nuestro whop de pago, ¡y esto es solo el comienzo de lo que tenemos preparado! 🔥 Si aún no te has unido... Aquí hay otras cosas que vamos a ofrecer: - Exclu',
+    fullContent: '@everyone tuvimos una llamada increíble en nuestro whop de pago, ¡y esto es solo el comienzo de lo que tenemos preparado! 🔥 Si aún no te has unido... Aquí hay otras cosas que vamos a ofrecer: - Ofertas exclusivas y más',
     timestamp: new Date(new Date().setHours(new Date().getHours() - 36, 1)),
     date: 'yesterday',
     read: false,
@@ -150,6 +150,7 @@ const sampleNotifications: Notification[] = [
 export function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>(sampleNotifications);
   const [groupedNotifications, setGroupedNotifications] = useState<{[key: string]: Notification[]}>({});
+  const [showReadFeedback, setShowReadFeedback] = useState(false);
 
   // Agrupar notificaciones por fecha
   useEffect(() => {
@@ -165,9 +166,26 @@ export function NotificationsPage() {
     setGroupedNotifications(grouped);
   }, [notifications]);
 
-  const handleMarkAllAsRead = () => {
+  const handleMarkAllAsRead = useCallback(() => {
     setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
-  };
+    setShowReadFeedback(true);
+    setTimeout(() => setShowReadFeedback(false), 2000);
+  }, []);
+
+  const handleMarkAsRead = useCallback((id: string) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  }, []);
+
+  const handleNotificationClick = useCallback((notification: Notification) => {
+    if (!notification.read) {
+      handleMarkAsRead(notification.id);
+    }
+    // Aquí se puede agregar la lógica para mostrar el contenido completo o navegar
+  }, [handleMarkAsRead]);
 
   return (
     <MainLayout>
@@ -187,63 +205,77 @@ export function NotificationsPage() {
             </div>
 
             <div className="flex items-center space-x-2">
+              {showReadFeedback && (
+                <span className="text-sm text-green-500 mr-2">
+                  Todas las notificaciones marcadas como leídas
+                </span>
+              )}
               <button
                 onClick={handleMarkAllAsRead}
                 className="px-3 py-1.5 rounded-md bg-transparent border border-[#333] hover:bg-[#1a1a1a] text-white text-sm transition-colors flex items-center"
               >
                 <span>Marcar todo como leído</span>
               </button>
-        
             </div>
           </div>
         </div>
 
-        {/* Lista de notificaciones agrupadas por fecha */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Lista de notificaciones */}
+        <div className="flex-1">
           {Object.entries(groupedNotifications).map(([date, notifications]) => (
             <div key={date} className="border-b border-[#1c1c1c]">
-              {/* Encabezado de sección con fecha */}
+              {/* Encabezado de fecha */}
               {date !== 'older' && (
                 <div className="py-1 px-4 text-xs text-gray-500 uppercase bg-[#0f0f0f]">
-                  {date}
+                  {date === 'today' ? 'Hoy' : date === 'yesterday' ? 'Ayer' : date}
                 </div>
               )}
 
-              {/* Notificaciones de esta fecha */}
-              <ul className="divide-y divide-[#1c1c1c]">
+              {/* Lista de notificaciones */}
+              <div className="divide-y divide-[#1c1c1c]">
                 {notifications.map((notification) => (
-                  <li
+                  <div
                     key={notification.id}
-                    className="hover:bg-[#111] transition-colors cursor-pointer"
+                    className="hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="px-4 py-3 flex items-start">
-                      {/* Avatar */}
-                      <div className="flex-shrink-0 mt-0.5">
-                        <img
-                          src={notification.user?.avatar}
-                          alt={notification.user?.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
+                      {/* Punto de notificación */}
+                      <div className="mt-[14px] mr-3 min-w-[8px]">
+                        {!notification.read && (
+                          <div className="w-[8px] h-[8px] bg-[#2563eb] rounded-full"></div>
+                        )}
                       </div>
 
+                      {/* Avatar */}
+                      <img
+                        src={notification.user?.avatar}
+                        alt={`Avatar de ${notification.user?.name}`}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      />
+
                       {/* Contenido */}
-                      <div className="ml-3 flex-1 min-w-0">
-                        <div className="flex justify-between items-start mb-1">
-                          <div className="font-semibold text-white text-sm">{notification.user?.name}</div>
-                          <div className="text-xs text-gray-500">{getRelativeTimeString(notification.timestamp)}</div>
+                      <div className="ml-3 flex-1">
+                        <div className="flex justify-between items-start">
+                          <span className="font-semibold text-sm">
+                            {notification.user?.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {getRelativeTimeString(notification.timestamp)}
+                          </span>
                         </div>
-                        <p className="text-sm text-gray-300 break-words leading-relaxed">
-                          {notification.content}
+                        <p className="text-sm text-gray-300 mt-1">
+                          {notification.fullContent || notification.content}
                         </p>
                       </div>
                     </div>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           ))}
 
-          {/* Estado vacío si no hay notificaciones */}
+          {/* Estado vacío */}
           {Object.keys(groupedNotifications).length === 0 && (
             <div className="flex flex-col items-center justify-center h-64 p-6">
               <div className="w-16 h-16 bg-[#1a1a1a] rounded-full flex items-center justify-center mb-4">

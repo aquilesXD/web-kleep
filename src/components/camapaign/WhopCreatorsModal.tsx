@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 interface WhopCreatorsModalProps {
   onClose: () => void;
+  isJoined?: boolean;
   reward?: {
     title: string;
     creator: string;
@@ -12,14 +13,20 @@ interface WhopCreatorsModalProps {
     paidAmount: string;
     totalAmount: string;
     percentage: number;
-    image?: "https://images.unsplash.com/photo-1581092334421-1e7e2727d940?auto=format&fit=crop&w=800&q=80",
+    image?: string;
   };
 }
 
-const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }) => {
+const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward, isJoined: initialIsJoined = false }) => {
   const [showJoinModal, setShowJoinModal] = React.useState(false);
+  const [isJoined, setIsJoined] = React.useState(initialIsJoined);
   const imageUrl = reward?.image ?? 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80';
   const navigate = useNavigate();
+
+  const handleJoinSuccess = () => {
+    setIsJoined(true);
+    setShowJoinModal(false);
+  };
 
   return (
     <>
@@ -27,12 +34,12 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
         <div className="relative bg-[#0c0c0c] border border-[#1c1c1c] rounded-lg w-full max-w-2xl p-6 text-white mx-4">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            className="absolute top-0 right-0 text-gray-400 hover:text-white z-50"
           >
             <X size={24} />
           </button>
 
-          <div className="aspect-video w-full rounded-md overflow-hidden mb-4">
+          <div className="aspect-video w-full rounded-md overflow-hidden mb-4 relative">
             <img
               src={imageUrl}
               alt={reward?.title}
@@ -63,18 +70,19 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
 
           {/* Botón CTA */}
           <button
-            className="w-full bg-[#7c3aed] hover:bg-purple-700 text-white text-black font-bold py-2 px-4 rounded"
-            onClick={() => setShowJoinModal(true)}
+            className={`w-full bg-[#7c3aed] hover:bg-purple-700 text-white text-black font-bold py-2 px-4 rounded ${isJoined ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+            onClick={() => !isJoined && setShowJoinModal(true)}
+            disabled={isJoined}
           >
-            Únete a
+            {isJoined ? 'Ya estás unido' : 'Únete a'}
           </button>
 
           <button
             onClick={() => {
-              localStorage.removeItem("isAuthenticated");
+              // Simplemente navegar a la página de campaña sin eliminar la autenticación
               navigate("/campaign");
             }}
-            className="w-full text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 hover:text-purple-500"
+            className="w-full text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 hover:text-purple-500 mt-4"
           >
             Llévame a la página de la tienda
             <svg
@@ -97,7 +105,10 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward }
 
       {/* Modal de formulario de espera */}
       {showJoinModal && (
-        <WaitlistFormModal onClose={() => setShowJoinModal(false)} />
+        <WaitlistFormModal 
+          onClose={handleJoinSuccess} 
+          reward={reward}
+        />
       )}
     </>
   );
