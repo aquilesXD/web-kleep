@@ -67,8 +67,6 @@ const ProfileBalance = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<number>(0)
-  const [apiResponseData, setApiResponseData] = useState<any>(null)
-  const [showingExampleData, setShowingExampleData] = useState<boolean>(false)
   const [showRejectionModal, setShowRejectionModal] = useState<boolean>(false)
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
@@ -228,7 +226,6 @@ const ProfileBalance = () => {
   const fetchDataFromApi = async (userEmail: string) => {
     setIsLoading(true)
     setError(null)
-    setShowingExampleData(false)
 
     try {
       const apiUrl = `https://contabl.net/nova/get-videos-to-pay?email=${encodeURIComponent(userEmail)}`
@@ -238,7 +235,6 @@ const ProfileBalance = () => {
       }
 
       const data = await response.json()
-      setApiResponseData(data)
       localStorage.setItem("apiResponse", JSON.stringify(data))
       processApiData(data, userEmail)
     } catch (error: any) {
@@ -250,13 +246,11 @@ const ProfileBalance = () => {
           const parsedData = JSON.parse(storedApiResponse)
           processApiData(parsedData, userEmail)
         } catch (parseError) {
-          showExampleDataForUser(userEmail)
+          setIsLoading(false)
         }
       } else {
-        showExampleDataForUser(userEmail)
+        setIsLoading(false)
       }
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -284,141 +278,49 @@ const ProfileBalance = () => {
 
   // Función para procesar los datos de la API
   const processApiData = (data: any, userEmail: string) => {
-    const apiData = data?.data || []
+    const apiData = data?.data || [];
 
-    if (Array.isArray(apiData) && apiData.length > 0) {
-      setShowingExampleData(false)
-
-      const processedVideos = apiData.map((item: ApiUser, index: number) => {
-        let totalToPay = 0
-        if (item.total_to_pay !== undefined && item.total_to_pay !== null) {
-          totalToPay =
-            typeof item.total_to_pay === "string" ? Number.parseFloat(item.total_to_pay) : Number(item.total_to_pay)
-        }
-        if (isNaN(totalToPay)) totalToPay = 0
-
-        const status = item.status !== undefined ? item.status : 0
-
-        // ✅ Usar el creator individual de cada video o un nombre genérico
-        const creatorAccount =
-          item.creator ||
-          findCreatorByEmail(item.email ?? "") ||
-          extractCreatorFromLink(item.video_link ?? "") ||
-          `@user_${index}`
-
-        return {
-          id: `api-video-${index}-${Date.now()}`,
-          title: item.first_name ? `Video de ${item.first_name}` : `Vídeo ${index + 1}`,
-          thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
-          price: totalToPay,
-          date: new Date().toISOString().split("T")[0],
-          campaign: item.campaign || "Campaña estándar",
-          video_link: item.video_link || "#",
-          total_to_pay: totalToPay,
-          verified: status === 1,
-          status: status,
-          status_note: item.status_note || "",
-          views: item.views || 0,
-          creator: creatorAccount,
-        }
-      })
-
-      setVideos(processedVideos)
-
-      let totalBalance = 0
-      processedVideos.forEach((video) => {
-        if ((video.views || 0) >= 2000) {
-          totalBalance += video.total_to_pay || 0
-        }
-      })
-
-      setBalance(totalBalance)
-    } else {
-      showExampleDataForUser(userEmail)
+    if (!Array.isArray(apiData) || apiData.length === 0) {
+      setIsLoading(false);
+      return;
     }
 
-    setIsLoading(false)
-  }
+    const processedVideos = apiData.map((item: ApiUser, index: number) => {
+      const totalToPay = parseFloat(item.total_to_pay as string) || 0;
+      const status = item.status ?? 0;
 
-  // Función para mostrar datos de ejemplo cuando no hay datos de la API
-  const showExampleDataForUser = (userEmail: string) => {
-    setShowingExampleData(true)
+      const creatorAccount =
+        item.creator ||
+        findCreatorByEmail(item.email ?? "") ||
+        extractCreatorFromLink(item.video_link ?? "") ||
+        `@user_${index}`;
 
-    const emailHash = hashString(userEmail) // Generar un hash basado en el correo
-    const random = (seed: number, max: number) => (Math.floor((seed * 9301 + 49297) % 233280) / 233280) * max
-
-    const numVideos = 3 + Math.floor(random(emailHash, 4))
-    const exampleVideos: Video[] = []
-
-    const campaignOptions = [
-      "Campaña Marketing Q1",
-      "Campaña Verano 2024",
-      "Lanzamiento Producto",
-      "Promoción Especial",
-      "Black Friday",
-      "Navidad 2024",
-    ]
-    const titleOptions = [
-      "Cómo hacer un video viral en TikTok",
-      "Los mejores tips para editar videos profesionales",
-      "Guía completa para monetizar en YouTube",
-      "Estrategias de marketing para redes sociales",
-      "Tutorial de edición de video con Adobe Premiere",
-      "Cómo crear contenido que enganche a tu audiencia",
-      "Secretos de iluminación para videos de calidad",
-      "Optimización SEO para videos en YouTube",
-    ]
-
-    let totalBalance = 0
-
-    for (let i = 0; i < numVideos; i++) {
-      const seed = emailHash + i
-      const price = Math.floor(random(seed, 200) + 50) + 0.99
-      const views = Math.floor(random(seed, 50000) + 5000)
-
-      // Generar un status aleatorio (0, 1 o 2)
-      const statusRand = random(seed, 1)
-      let status
-      if (statusRand < 0.33)
-        status = 0 // 33% En proceso
-      else if (statusRand < 0.8)
-        status = 1 // 47% Aprobado
-      else status = 2 // 20% Rechazado
-
-      const video: Video = {
-        id: `example-video-${i}-${Date.now()}`, // ID único garantizado
-        title: titleOptions[Math.floor(random(seed, titleOptions.length))],
+      return {
+        id: `api-video-${index}-${Date.now()}`,
+        title: item.first_name ? `Video de ${item.first_name}` : `Vídeo ${index + 1}`,
         thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
-        price: price,
-        date: `2024-${Math.floor(random(seed, 12)) + 1}-${Math.floor(random(seed, 28)) + 1}`,
-        campaign: campaignOptions[Math.floor(random(seed, campaignOptions.length))],
-        video_link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        total_to_pay: price,
-        views: views,
-        verified: status === 1, // Para compatibilidad
-        status: status, // 0: En proceso, 1: Aprobado, 2: Rechazado
-        creator: `@tiktok_user_${i}`, // Usar un nombre de usuario de TikTok de ejemplo
-      }
+        price: totalToPay,
+        date: new Date().toISOString().split("T")[0],
+        campaign: item.campaign || "Campaña estándar",
+        video_link: item.video_link || "#",
+        total_to_pay: totalToPay,
+        verified: status === 1,
+        status,
+        status_note: item.status_note || "",
+        views: item.views || 0,
+        creator: creatorAccount,
+      };
+    });
 
-      exampleVideos.push(video)
+    setVideos(processedVideos);
 
-      // Sumar TODOS los videos al balance, independientemente de su estado
-      totalBalance += price
-    }
+    const totalBalance = processedVideos.reduce((acc, video) => {
+      return acc + ((video.views || 0) >= 2000 ? video.total_to_pay || 0 : 0);
+    }, 0);
 
-    setVideos(exampleVideos)
-    setBalance(totalBalance)
-  }
-
-  const hashString = (str: string): number => {
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i)
-      hash = (hash << 5) - hash + char
-      hash = hash & hash // Convertir a entero de 32 bits
-    }
-    return Math.abs(hash)
-  }
+    setBalance(totalBalance);
+    setIsLoading(false);
+  };
 
   const handleShowRejectionModal = (videoId: string) => {
     const video = videos.find((v) => v.id === videoId)
@@ -544,12 +446,6 @@ const ProfileBalance = () => {
           >
             Intentar de nuevo
           </button>
-        </div>
-      )}
-
-      {showingExampleData && (
-        <div className="bg-blue-900/30 border border-blue-700 rounded mb-6 p-3 text-blue-400">
-          <p>La API no ha devuelto videos para mostrar. Se están mostrando videos de ejemplo.</p>
         </div>
       )}
 
