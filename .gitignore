@@ -1,4 +1,9 @@
 .vercel
-.ven
+.venv
 /node_modules
 /dist
+.cursorrules
+/rules
+.cursor
+.gitignore
+

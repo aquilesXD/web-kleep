@@ -13,20 +13,14 @@ interface WhopCreatorsModalProps {
     paidAmount: string;
     totalAmount: string;
     percentage: number;
-    image?: string;
+    image?: "https://images.unsplash.com/photo-1581092334421-1e7e2727d940?auto=format&fit=crop&w=800&q=80",
   };
 }
 
-const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward, isJoined: initialIsJoined = false }) => {
+const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward, isJoined = false }) => {
   const [showJoinModal, setShowJoinModal] = React.useState(false);
-  const [isJoined, setIsJoined] = React.useState(initialIsJoined);
   const imageUrl = reward?.image ?? 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80';
   const navigate = useNavigate();
-
-  const handleJoinSuccess = () => {
-    setIsJoined(true);
-    setShowJoinModal(false);
-  };
 
   return (
     <>
@@ -105,10 +99,7 @@ const WhopCreatorsModal: React.FC<WhopCreatorsModalProps> = ({ onClose, reward, 
 
       {/* Modal de formulario de espera */}
       {showJoinModal && (
-        <WaitlistFormModal 
-          onClose={handleJoinSuccess} 
-          reward={reward}
-        />
+        <WaitlistFormModal onClose={() => setShowJoinModal(false)} />
       )}
     </>
   );
