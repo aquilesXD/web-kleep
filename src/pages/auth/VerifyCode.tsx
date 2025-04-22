@@ -23,11 +23,14 @@ const VerifyCode: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   // Estado para mostrar el código actual (solo para depuración)
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [particlesLoaded, setParticlesLoaded] = useState(false);
+  const particlesContainer = useRef<HTMLDivElement>(null);
+  const [particlesScriptLoaded, setParticlesScriptLoaded] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
   const latestCodeRef = useRef<string>('');
-const codeTimestampRef = useRef<number>(0);
+  const codeTimestampRef = useRef<number>(0);
 
   // Initialize the array of refs for 6 digits
   if (inputRefs.current.length !== 6) {
@@ -41,6 +44,18 @@ const codeTimestampRef = useRef<number>(0);
     const storedApiData = localStorage.getItem('apiResponse');
     const registering = localStorage.getItem('isRegistering') === 'true';
     
+    // Load particles.js
+    if (typeof window !== "undefined" && !(window as any).particlesJS) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js';
+      script.async = true;
+      script.onload = () => {
+        setParticlesScriptLoaded(true);
+      };
+      document.body.appendChild(script);
+    } else {
+      setParticlesScriptLoaded(true);
+    }
 
     setIsRegistering(registering);
 
@@ -78,6 +93,123 @@ const codeTimestampRef = useRef<number>(0);
       }
     }, 500);
   }, [navigate]);
+
+  useEffect(() => {
+    if (particlesScriptLoaded && typeof (window as any).particlesJS !== 'undefined') {
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        try {
+          (window as any).particlesJS("particles-js", {
+            particles: {
+              number: {
+                value: 100,
+                density: {
+                  enable: true,
+                  value_area: 800,
+                },
+              },
+              color: {
+                value: ["#8b5cf6", "#a78bfa", "#c4b5fd"],
+              },
+              shape: {
+                type: ["star", "circle", "triangle", "polygon"],
+                stroke: {
+                  width: 0,
+                  color: "#000000",
+                },
+                polygon: {
+                  nb_sides: 5,
+                },
+              },
+              opacity: {
+                value: 0.7,
+                random: true,
+                anim: {
+                  enable: true,
+                  speed: 1,
+                  opacity_min: 0.1,
+                  sync: false,
+                },
+              },
+              size: {
+                value: 4,
+                random: true,
+                anim: {
+                  enable: true,
+                  speed: 2,
+                  size_min: 0.1,
+                  sync: false,
+                },
+              },
+              line_linked: {
+                enable: true,
+                distance: 150,
+                color: "#8b5cf6",
+                opacity: 0.3,
+                width: 1,
+              },
+              move: {
+                enable: true,
+                speed: 2,
+                direction: "none",
+                random: true,
+                straight: false,
+                out_mode: "out",
+                bounce: false,
+                attract: {
+                  enable: true,
+                  rotateX: 600,
+                  rotateY: 1200,
+                },
+              },
+            },
+            interactivity: {
+              detect_on: "canvas",
+              events: {
+                onhover: {
+                  enable: true,
+                  mode: "bubble",
+                },
+                onclick: {
+                  enable: true,
+                  mode: "push",
+                },
+                resize: true,
+              },
+              modes: {
+                grab: {
+                  distance: 140,
+                  line_linked: {
+                    opacity: 1,
+                  },
+                },
+                bubble: {
+                  distance: 200,
+                  size: 6,
+                  duration: 2,
+                  opacity: 0.8,
+                  speed: 3,
+                },
+                repulse: {
+                  distance: 200,
+                  duration: 0.4,
+                },
+                push: {
+                  particles_nb: 4,
+                },
+                remove: {
+                  particles_nb: 2,
+                },
+              },
+            },
+            retina_detect: true,
+          });
+        } catch (error) {
+        }
+      }, 100);
+    }
+  }, [particlesScriptLoaded]);
 
   // Función para extraer y establecer el código esperado a partir de los datos de la API
   const extractAndSetExpectedCode = (apiDataStr: string | null) => {
@@ -307,8 +439,14 @@ const codeTimestampRef = useRef<number>(0);
   };
 
   return (
-    <div className="min-h-screen bg-[#0c0c0c] flex items-center justify-center p-4">
-      <div className="verification-container card w-full" style={{ maxWidth: '400px', borderRadius: '8px', backgroundColor: '#191919' }}>
+    <div className="min-h-screen bg-[#0c0c0c] flex items-center justify-center p-4 relative w-full h-screen overflow-hidden">
+      <div id="particles-js" ref={particlesContainer} className="absolute inset-0 z-0">
+        {particlesLoaded && <ParticlesBackground containerRef={particlesContainer} />}
+      </div>
+
+      <div className="verification-container card w-full relative z-10 bg-[rgba(25,25,25,0.85)] backdrop-blur-md rounded-xl shadow-lg border border-[rgba(51,51,51,0.2)] overflow-hidden" style={{ maxWidth: '400px', borderRadius: '8px' }}>
+        <div className="absolute top-0 left-0 w-full h-[5px] bg-gradient-to-r from-[#8b5cf6] to-[#c084fc]"></div>
+        
         <div className="logo mt-4 text-center">
           <LogoIcon width={40} height={40} className="mx-auto" />
         </div>
@@ -341,7 +479,7 @@ const codeTimestampRef = useRef<number>(0);
           </div>
         )}
 
-        <div className="code-input flex justify-center mb-6">
+        <div className="code-input flex justify-center mb-6 px-4">
           {[0, 1, 2, 3, 4, 5].map((index) => (
             <input
               key={index}
@@ -380,7 +518,7 @@ const codeTimestampRef = useRef<number>(0);
           Volver
         </button>
 
-        <div className="no-code text-center mt-2">
+        <div className="no-code text-center mt-2 mb-4">
           <button
             className="text-white hover:underline text-sm sm:text-base"
             onClick={handleResendCode}
@@ -393,5 +531,83 @@ const codeTimestampRef = useRef<number>(0);
     </div>
   );
 };
+
+// Función para renderizar las partículas
+function ParticlesBackground({ containerRef }: { containerRef: React.RefObject<HTMLDivElement> }) {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if ((window as any).particlesJS && containerRef.current) {
+        (window as any).particlesJS("particles-js", {
+          particles: {
+            number: {
+              value: 100,
+              density: { enable: true, value_area: 800 },
+            },
+            color: { value: ["#8b5cf6", "#a78bfa", "#c4b5fd"] },
+            shape: {
+              type: ["star", "circle", "triangle", "polygon"],
+              stroke: { width: 0, color: "#000000" },
+              polygon: { nb_sides: 5 },
+            },
+            opacity: {
+              value: 0.7,
+              random: true,
+              anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false },
+            },
+            size: {
+              value: 4,
+              random: true,
+              anim: { enable: true, speed: 2, size_min: 0.1, sync: false },
+            },
+            line_linked: {
+              enable: true,
+              distance: 150,
+              color: "#8b5cf6",
+              opacity: 0.3,
+              width: 1,
+            },
+            move: {
+              enable: true,
+              speed: 2,
+              direction: "none",
+              random: true,
+              straight: false,
+              out_mode: "out",
+              bounce: false,
+              attract: { enable: true, rotateX: 600, rotateY: 1200 },
+            },
+          },
+          interactivity: {
+            detect_on: "canvas",
+            events: {
+              onhover: { enable: true, mode: "bubble" },
+              onclick: { enable: true, mode: "push" },
+              resize: true,
+            },
+            modes: {
+              grab: { distance: 140, line_linked: { opacity: 1 } },
+              bubble: {
+                distance: 200,
+                size: 6,
+                duration: 2,
+                opacity: 0.8,
+                speed: 3,
+              },
+              repulse: { distance: 200, duration: 0.4 },
+              push: { particles_nb: 4 },
+              remove: { particles_nb: 2 },
+            },
+          },
+          retina_detect: true,
+        });
+        clearInterval(interval); // solo una vez
+      }
+    }, 100); // chequea cada 100ms
+
+    return () => clearInterval(interval);
+  }, [containerRef]);
+
+  return null;
+}
 
 export default VerifyCode;
