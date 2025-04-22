@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../../components/ui/Form.css';
 import { isEmailAllowed, addAllowedEmail } from '../../services/authService';
@@ -19,6 +19,9 @@ const SignUp: React.FC = () => {
   const [isValidForm, setIsValidForm] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [particlesLoaded, setParticlesLoaded] = useState(false);
+  const particlesContainer = useRef<HTMLDivElement>(null);
+  const [particlesScriptLoaded, setParticlesScriptLoaded] = useState(false);
   const navigate = useNavigate();
 
   // Verificar si el usuario ya está autenticado
@@ -27,7 +30,138 @@ const SignUp: React.FC = () => {
     if (isAuthenticated === 'true') {
       navigate('/campaign-home');
     }
+
+    // Cargar el script de partículas si no está ya cargado
+    if (typeof window !== "undefined" && !(window as any).particlesJS) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js';
+      script.async = true;
+      script.onload = () => {
+        setParticlesScriptLoaded(true);
+      };
+      document.body.appendChild(script);
+    } else {
+      setParticlesScriptLoaded(true);
+    }
   }, [navigate]);
+
+  // Inicializar las partículas cuando el script esté cargado
+  useEffect(() => {
+    if (particlesScriptLoaded && typeof (window as any).particlesJS !== 'undefined') {
+      // Pequeño retraso para asegurar que el DOM esté listo
+      setTimeout(() => {
+        try {
+          (window as any).particlesJS("particles-js", {
+            particles: {
+              number: {
+                value: 100,
+                density: {
+                  enable: true,
+                  value_area: 800,
+                },
+              },
+              color: {
+                value: ["#8b5cf6", "#a78bfa", "#c4b5fd"],
+              },
+              shape: {
+                type: ["star", "circle", "triangle", "polygon"],
+                stroke: {
+                  width: 0,
+                  color: "#000000",
+                },
+                polygon: {
+                  nb_sides: 5,
+                },
+              },
+              opacity: {
+                value: 0.7,
+                random: true,
+                anim: {
+                  enable: true,
+                  speed: 1,
+                  opacity_min: 0.1,
+                  sync: false,
+                },
+              },
+              size: {
+                value: 4,
+                random: true,
+                anim: {
+                  enable: true,
+                  speed: 2,
+                  size_min: 0.1,
+                  sync: false,
+                },
+              },
+              line_linked: {
+                enable: true,
+                distance: 150,
+                color: "#8b5cf6",
+                opacity: 0.3,
+                width: 1,
+              },
+              move: {
+                enable: true,
+                speed: 2,
+                direction: "none",
+                random: true,
+                straight: false,
+                out_mode: "out",
+                bounce: false,
+                attract: {
+                  enable: true,
+                  rotateX: 600,
+                  rotateY: 1200,
+                },
+              },
+            },
+            interactivity: {
+              detect_on: "canvas",
+              events: {
+                onhover: {
+                  enable: true,
+                  mode: "bubble",
+                },
+                onclick: {
+                  enable: true,
+                  mode: "push",
+                },
+                resize: true,
+              },
+              modes: {
+                grab: {
+                  distance: 140,
+                  line_linked: {
+                    opacity: 1,
+                  },
+                },
+                bubble: {
+                  distance: 200,
+                  size: 6,
+                  duration: 2,
+                  opacity: 0.8,
+                  speed: 3,
+                },
+                repulse: {
+                  distance: 200,
+                  duration: 0.4,
+                },
+                push: {
+                  particles_nb: 4,
+                },
+                remove: {
+                  particles_nb: 2,
+                },
+              },
+            },
+            retina_detect: true,
+          });
+        } catch (error) {
+          console.error("Error al inicializar partículas:", error);
+        }
+      }, 100);
+    }
+  }, [particlesScriptLoaded]);
 
   // Validar formulario completo cuando cambian los campos
   useEffect(() => {
@@ -140,19 +274,27 @@ const SignUp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0c0c0c] flex items-center justify-center p-4">
-      <div className="login-container card w-full" style={{ maxWidth: '500px', borderRadius: '8px' }}>
-        {/* Logo */}
-        
+    <div className="relative w-full h-screen flex justify-center items-center overflow-hidden bg-[#0c0c0c]">
+      <div id="particles-js" ref={particlesContainer} className="absolute inset-0 z-0">
+        {particlesLoaded && <ParticlesBackground containerRef={particlesContainer} />}
+      </div>
 
-        <h2 className="text-white w-100 mt-1 text-center text-2xl sm:text-3xl font-bold">
-          Crear una cuenta
-        </h2>
+      <div className="relative z-10 bg-[rgba(25,25,25,0.85)] backdrop-blur-md rounded-xl w-[90%] max-w-[500px] p-8 md:p-10 shadow-lg border border-[rgba(51,51,51,0.2)] overflow-hidden animate-fadeIn">
+        <div className="absolute top-0 left-0 w-full h-[5px] bg-gradient-to-r from-[#8b5cf6] to-[#c084fc]"></div>
+
+        <div className="text-center mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mt-2">
+            <span className="bg-gradient-to-r from-[#8b5cf6] to-[#c084fc] bg-clip-text text-transparent">K</span>
+          </h1>
+          <h2 className="text-white mt-4 text-xl sm:text-2xl font-bold">
+            Crear una cuenta
+          </h2>
+        </div>
 
         <form className="mt-6" onSubmit={handleSubmit}>
           <div className="mb-4">
             <input
-              className={`form-control w-full p-2 sm:p-3 bg-[#191919] border ${error ? 'border-red-500' : 'border-[#333]'} text-white text-sm sm:text-base`}
+              className="w-full py-3 px-4 bg-[rgba(28,28,28,0.7)] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a78bfa] border border-[rgba(75,75,75,0.5)]"
               id="name"
               placeholder="Nombre completo"
               type="text"
@@ -165,7 +307,7 @@ const SignUp: React.FC = () => {
           
           <div className="mb-4">
             <input
-              className={`form-control w-full p-2 sm:p-3 bg-[#191919] border ${error ? 'border-red-500' : 'border-[#333]'} text-white text-sm sm:text-base`}
+              className="w-full py-3 px-4 bg-[rgba(28,28,28,0.7)] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a78bfa] border border-[rgba(75,75,75,0.5)]"
               id="email"
               placeholder="Tu correo"
               type="email"
@@ -178,7 +320,7 @@ const SignUp: React.FC = () => {
           
           <div className="mb-4">
             <input
-              className={`form-control w-full p-2 sm:p-3 bg-[#191919] border ${error ? 'border-red-500' : 'border-[#333]'} text-white text-sm sm:text-base`}
+              className="w-full py-3 px-4 bg-[rgba(28,28,28,0.7)] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a78bfa] border border-[rgba(75,75,75,0.5)]"
               id="phone"
               placeholder="Teléfono"
               type="tel"
@@ -191,7 +333,7 @@ const SignUp: React.FC = () => {
           
           <div className="mb-4">
             <input
-              className={`form-control w-full p-2 sm:p-3 bg-[#191919] border ${error ? 'border-red-500' : 'border-[#333]'} text-white text-sm sm:text-base`}
+              className="w-full py-3 px-4 bg-[rgba(28,28,28,0.7)] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a78bfa] border border-[rgba(75,75,75,0.5)]"
               id="country"
               placeholder="País"
               type="text"
@@ -204,7 +346,7 @@ const SignUp: React.FC = () => {
           
           <div className="mb-4">
             <input
-              className={`form-control w-full p-2 sm:p-3 bg-[#191919] border ${error ? 'border-red-500' : 'border-[#333]'} text-white text-sm sm:text-base`}
+              className="w-full py-3 px-4 bg-[rgba(28,28,28,0.7)] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a78bfa] border border-[rgba(75,75,75,0.5)]"
               id="city"
               placeholder="Ciudad"
               type="text"
@@ -215,15 +357,15 @@ const SignUp: React.FC = () => {
             />
           </div>
           
-          <div className="mb-4">
+          <div className="mb-5">
             <label className="block text-white text-sm mb-2">Foto de perfil (opcional)</label>
             <div className="flex items-center gap-4">
               {previewUrl && (
-                <div className="h-16 w-16 rounded-full overflow-hidden bg-[#333]">
+                <div className="h-16 w-16 rounded-full overflow-hidden bg-[rgba(40,40,40,0.5)]">
                   <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               )}
-              <label className="cursor-pointer bg-[#333] hover:bg-[#444] text-white px-4 py-2 rounded">
+              <label className="cursor-pointer bg-[rgba(40,40,40,0.5)] hover:bg-[rgba(60,60,60,0.5)] text-white px-4 py-2 rounded-lg transition-colors">
                 {profilePicture ? 'Cambiar foto' : 'Subir foto'}
                 <input
                   type="file"
@@ -236,10 +378,10 @@ const SignUp: React.FC = () => {
             </div>
           </div>
           
-          {error && <p className="text-red-500 text-xs mt-1 mb-2">{error}</p>}
+          {error && <p className="text-red-500 text-sm mt-1 mb-4">{error}</p>}
           
           <button
-            className={`w-full mt-2 bg-[#7c3aed] text-white font-medium py-2 sm:py-3 px-4 text-sm sm:text-base ${!isValidForm || isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#6d28d9]'}`}
+            className={`w-full py-4 bg-gradient-to-r from-[#8b5cf6] to-[#c084fc] text-white font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:from-[#7c3aed] hover:to-[#a855f7] ${!isValidForm || isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             type="submit"
             disabled={!isValidForm || isLoading}
           >
@@ -248,11 +390,11 @@ const SignUp: React.FC = () => {
         </form>
 
         <div className="create-account">
-          <hr className="border-t border-[#333] my-4" />
-          <div className="mt-3 flex items-center justify-center">
-            <p className="text-white text-center text-sm sm:text-base">
-              ¿Ya tienes una cuenta?
-              <Link className="text-[#7c3aed] ml-1 hover:underline" to="/signin">
+          <hr className="border-t border-[rgba(75,75,75,0.3)] my-6" />
+          <div className="flex items-center justify-center">
+            <p className="text-gray-300 text-center">
+              ¿Ya tienes una cuenta?{" "}
+              <Link className="text-[#a78bfa] hover:text-[#c4b5fd] hover:underline transition-colors" to="/signin">
                 Iniciar sesión
               </Link>
             </p>
@@ -262,5 +404,83 @@ const SignUp: React.FC = () => {
     </div>
   );
 };
+
+// Componente para el fondo de partículas
+function ParticlesBackground({ containerRef }: { containerRef: React.RefObject<HTMLDivElement> }) {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if ((window as any).particlesJS && containerRef.current) {
+        (window as any).particlesJS("particles-js", {
+          particles: {
+            number: {
+              value: 100,
+              density: { enable: true, value_area: 800 },
+            },
+            color: { value: ["#8b5cf6", "#a78bfa", "#c4b5fd"] },
+            shape: {
+              type: ["star", "circle", "triangle", "polygon"],
+              stroke: { width: 0, color: "#000000" },
+              polygon: { nb_sides: 5 },
+            },
+            opacity: {
+              value: 0.7,
+              random: true,
+              anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false },
+            },
+            size: {
+              value: 4,
+              random: true,
+              anim: { enable: true, speed: 2, size_min: 0.1, sync: false },
+            },
+            line_linked: {
+              enable: true,
+              distance: 150,
+              color: "#8b5cf6",
+              opacity: 0.3,
+              width: 1,
+            },
+            move: {
+              enable: true,
+              speed: 2,
+              direction: "none",
+              random: true,
+              straight: false,
+              out_mode: "out",
+              bounce: false,
+              attract: { enable: true, rotateX: 600, rotateY: 1200 },
+            },
+          },
+          interactivity: {
+            detect_on: "canvas",
+            events: {
+              onhover: { enable: true, mode: "bubble" },
+              onclick: { enable: true, mode: "push" },
+              resize: true,
+            },
+            modes: {
+              grab: { distance: 140, line_linked: { opacity: 1 } },
+              bubble: {
+                distance: 200,
+                size: 6,
+                duration: 2,
+                opacity: 0.8,
+                speed: 3,
+              },
+              repulse: { distance: 200, duration: 0.4 },
+              push: { particles_nb: 4 },
+              remove: { particles_nb: 2 },
+            },
+          },
+          retina_detect: true,
+        });
+        clearInterval(interval); // solo una vez
+      }
+    }, 100); // chequea cada 100ms
+
+    return () => clearInterval(interval);
+  }, [containerRef]);
+
+  return null;
+}
 
 export default SignUp;
