@@ -1,29 +1,8 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { CampaignSidebar } from "../layout/CampainSidebar";
 import Sidebar from "../layout/Sidebar";
 
 
 export default function CampaignStartHere() {
-  const navigate = useNavigate();
-
-  // Verificar autenticación al cargar el componente
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    const userEmail = localStorage.getItem("userEmail");
-
-    // Verificar que tanto isAuthenticated como userEmail existan
-    if (!isAuthenticated || !userEmail) {
-      // Limpiar cualquier dato de sesión parcial
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("userEmail");
-      localStorage.removeItem("apiResponse");
-
-      // Redirigir al inicio de sesión
-      navigate("/signin");
-    }
-  }, [navigate]);
-
   return (
     <div className="min-h-screen bg-[#121212]">
       <Sidebar />

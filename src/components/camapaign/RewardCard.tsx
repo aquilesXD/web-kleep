@@ -3,8 +3,6 @@
 import { useState } from "react"
 import WhopCreatorsModal from "./WhopCreatorsModal"
 
-
-
 interface RewardCardProps {
   reward: {
     id: number
@@ -18,10 +16,15 @@ interface RewardCardProps {
     platform: string
     rate: string
     specialStyle?: boolean
+    views?: number
+    earnings?: string
+    status?: string
+    isJoined?: boolean
   }
+  showEarnings?: boolean
 }
 
-export function RewardCard({ reward }: RewardCardProps) {
+export function RewardCard({ reward, showEarnings = false }: RewardCardProps) {
   const [showModal, setShowModal] = useState(false)
 
   const handleCardClick = () => {
@@ -35,9 +38,17 @@ export function RewardCard({ reward }: RewardCardProps) {
   return (
     <>
       <div
-        className="bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:border-[#3a3a3a] transition-colors"
+        className="bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:border-[#3a3a3a] transition-colors relative"
         onClick={handleCardClick}
       >
+        {reward.isJoined && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-900 text-green-400">
+              Unido
+            </span>
+          </div>
+        )}
+        
         <div className="p-4">
           <div className="flex items-center mb-3">
             <div className="h-10 w-10 rounded-full overflow-hidden mr-3 flex-shrink-0">
@@ -50,6 +61,19 @@ export function RewardCard({ reward }: RewardCardProps) {
             <div>
               <p className="font-medium text-white">{reward.creator}</p>
             </div>
+            {showEarnings && reward.status && (
+              <div className="ml-auto">
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                  reward.status === 'active' ? 'bg-green-900 text-green-400' : 
+                  reward.status === 'pending' ? 'bg-yellow-900 text-yellow-400' : 
+                  'bg-red-900 text-red-400'
+                }`}>
+                  {reward.status === 'active' ? 'Activa' : 
+                   reward.status === 'pending' ? 'Pendiente' : 
+                   'Pausada'}
+                </span>
+              </div>
+            )}
           </div>
 
           <p className="text-white font-medium mb-3 hover:underline">{reward.title}</p>
@@ -64,6 +88,22 @@ export function RewardCard({ reward }: RewardCardProps) {
           <div className="h-3 w-full bg-[#121212] border border-[#2a2a2a] rounded mb-4">
             <div className="h-full bg-orange-500 rounded" style={{ width: `${reward.percentage}%` }}></div>
           </div>
+
+          {showEarnings && reward.views !== undefined && reward.earnings !== undefined ? (
+            <div className="mb-4 bg-[#222] p-3 rounded-lg border border-[#333]">
+              <h4 className="text-xs font-bold text-gray-400 mb-2">Tus Estadísticas</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs font-bold text-gray-400 mb-1">Vistas</p>
+                  <p className="text-sm text-white">{reward.views.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 mb-1">Ganancias</p>
+                  <p className="text-sm text-green-400">{reward.earnings} US$</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-3 gap-2">
             <div>

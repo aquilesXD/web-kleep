@@ -36,20 +36,23 @@ function App() {
         />
 
         <Routes>
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/signin" replace />} />
+          {/* Default redirect - Ahora redirige a campaign-home */}
+          <Route path="/" element={<Navigate to="/campaign-home" replace />} />
 
           {/* Auth Routes */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/verify-code" element={<VerifyCode />} />
 
-          {/* Campaign Routes */}
+          {/* Public Campaign Routes */}
+          <Route path="/campaign-home" element={<Home />} />
+          
+          {/* Other Campaign Routes (pueden requerir autenticación) */}
           <Route path="/campaign" element={<Campaign />} />
+          <Route path="/campaign/:campaignId" element={<Campaign />} />
           <Route path="/campaign-start-here" element={<CampaignStartHere />} />
           <Route path="/campaign-rewards" element={<CampaignRewards />} />
           <Route path="/campaign-ads" element={<CampaignAds />} />
-          <Route path="/campaign-home" element={<Home />} />
           <Route path="/campaign-videos" element={<CampaignVideos />} />
 
           {/* Notifications Route */}
@@ -64,8 +67,8 @@ function App() {
             <Route path="profile-saldo" element={<ProfileBalance />} />
           </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/signin" replace />} />
+          {/* Fallback - Redirige a campaign-home en lugar de signin */}
+          <Route path="*" element={<Navigate to="/campaign-home" replace />} />
         </Routes>
       </div>
     </Router>

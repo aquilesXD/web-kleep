@@ -1,11 +1,21 @@
 import { Link } from "react-router-dom"
 import { Video, BarChart2, Medal, MapPin, SquarePen } from "lucide-react"
+import { useState, useEffect } from "react"
 
 interface ProfileSidebarProps {
   activeItem?: "overview" | "start-here" | "rewards" | "videos" | "ads"
 }
 
 export function CampaignSidebar({ activeItem = "overview" }: ProfileSidebarProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Verificar autenticación al montar el componente
+  useEffect(() => {
+    const authStatus = localStorage.getItem("isAuthenticated");
+    const userEmail = localStorage.getItem("userEmail");
+    setIsAuthenticated(Boolean(authStatus && userEmail));
+  }, []);
+
   return (
     <aside className="w-full lg:w-[375px] lg:min-h-screen border-r border-[#2a2a2a] p-6 bg-[#121212]">
       <div className="relative h-[150px] rounded-xl overflow-hidden mb-6">
@@ -49,35 +59,39 @@ export function CampaignSidebar({ activeItem = "overview" }: ProfileSidebarProps
             COMIENZA AQUI
             </Link>
 
-            <Link
-            to="/campaign-rewards"
-            className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "rewards" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
-            >
-            <div className="w-[30px] h-[30px] bg-blue-600 rounded flex items-center justify-center mr-3">
-              <Medal size={18} className="text-white" />
-            </div>
-            RECOMPENSAS
-            </Link>
+            {isAuthenticated && (
+              <>
+                <Link
+                to="/campaign-rewards"
+                className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "rewards" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
+                >
+                <div className="w-[30px] h-[30px] bg-blue-600 rounded flex items-center justify-center mr-3">
+                  <Medal size={18} className="text-white" />
+                </div>
+                RECOMPENSAS
+                </Link>
 
-          <Link
-            to="/campaign-videos"
-            className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "videos" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
-          >
-            <div className="w-[30px] h-[30px] bg-blue-600 rounded flex items-center justify-center mr-3">
-              <Video size={18} className="text-white" />
-            </div>
-            MIS VIDEOS
-          </Link>
+                <Link
+                to="/campaign-videos"
+                className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "videos" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
+                >
+                <div className="w-[30px] h-[30px] bg-blue-600 rounded flex items-center justify-center mr-3">
+                  <Video size={18} className="text-white" />
+                </div>
+                MIS VIDEOS
+                </Link>
 
-          <Link
-            to="/campaign-ads"
-            className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "ads" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
-          >
-            <div className="w-[30px] h-[30px] bg-blue-600  rounded flex items-center justify-center mr-3">
-              <BarChart2 size={18} className="text-white" />
-            </div>
-            ANUNCIOS
-          </Link>
+                <Link
+                to="/campaign-ads"
+                className={`flex items-center px-4 py-3 rounded-xl font-semibold text-base transition-colors text-white ${activeItem === "ads" ? "bg-[#1c1c1c]" : "hover:bg-[#1c1c1c]"}`}
+                >
+                <div className="w-[30px] h-[30px] bg-blue-600  rounded flex items-center justify-center mr-3">
+                  <BarChart2 size={18} className="text-white" />
+                </div>
+                ANUNCIOS
+                </Link>
+              </>
+            )}
         </div>
       </nav>
     </aside>
