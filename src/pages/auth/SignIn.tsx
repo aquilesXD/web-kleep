@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { User } from "lucide-react"
 
 export default function LoginForm() {
@@ -248,36 +248,43 @@ export default function LoginForm() {
           <div className="mb-5 relative">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <User size={18} />
+                <User size={20} />
               </span>
               <input
                 type="email"
-                id="email"
                 name="email"
+                className="w-full py-4 pl-10 pr-4 bg-[rgba(28,28,28,0.7)] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a78bfa] border border-[rgba(75,75,75,0.5)]"
+                placeholder="Correo electrónico"
                 value={email}
                 onChange={handleEmailChange}
-                placeholder="Tu correo"
-                className={`w-full py-3 pl-11 pr-3 bg-[#191919] text-white rounded-lg border ${
-                  error ? "border-red-500" : "border-[#333]"
-                } focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:ring-opacity-50 transition-all text-sm sm:text-base`}
-                disabled={isLoading}
-                autoComplete="email"
                 required
+                autoComplete="email"
               />
             </div>
-            {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
           </div>
 
           <button
             type="submit"
-            className={`w-full py-3 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg font-medium transition-all hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 relative overflow-hidden text-sm sm:text-base ${
-              !isValidEmail || isLoading ? "opacity-50 cursor-not-allowed" : ""
+            className={`w-full py-4 bg-gradient-to-r from-[#8b5cf6] to-[#c084fc] text-white font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:from-[#7c3aed] hover:to-[#a855f7] ${
+              isLoading ? "opacity-75 cursor-not-allowed" : ""
             }`}
-            disabled={!isValidEmail || isLoading}
+            disabled={isLoading}
           >
             {isLoading ? "Cargando..." : "Continuar"}
           </button>
         </form>
+
+        {/* Enlace para registrarse */}
+        <div className="mt-6 text-center">
+          <p className="text-gray-300">
+            ¿No tienes una cuenta?{" "}
+            <Link to="/signup" className="text-[#a78bfa] hover:text-[#c4b5fd] hover:underline transition-colors">
+              Regístrate aquí
+            </Link>
+          </p>
+        </div>
+
       </div>
     </div>
   )
